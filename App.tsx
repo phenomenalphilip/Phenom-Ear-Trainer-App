@@ -1,6 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { signInWithPopup, signOut, onAuthStateChanged, User, AuthError } from 'firebase/auth';
+import { auth, googleProvider } from './services/firebase';
+
 import Piano from './components/Piano';
 import Heatmap from './components/Heatmap';
 import { UserStats, GameState, Question, DifficultyLevel, Challenge } from './types';
@@ -206,13 +208,108 @@ const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings:
   );
 };
 
-const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void; onReset: () => void; onToggleTheme: () => void; stats: UserStats }> = ({ isOpen, onClose, onReset, onToggleTheme, stats }) => {
+const SettingsModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onReset: () => void; 
+  onToggleTheme: () => void; 
+  stats: UserStats;
+  user: User | null;
+}> = ({ isOpen, onClose, onReset, onToggleTheme, stats, user }) => {
+
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+     if (isAuthLoading) return;
+     setIsAuthLoading(true);
+     setAuthError(null);
+     try {
+        await signInWithPopup(auth, googleProvider);
+     } catch (error: any) {
+        console.error("Login failed", error);
+        
+        // Handle specific Firebase errors
+        if (error.code === 'auth/unauthorized-domain') {
+            setAuthError(`Domain not authorized: ${window.location.hostname}`);
+        } else if (error.code === 'auth/popup-blocked') {
+            setAuthError("Popup blocked. Please allow popups for this site.");
+        } else if (error.code === 'auth/cancelled-popup-request') {
+             // User closed the popup, or clicked twice. Ignore.
+             console.log("Popup cancelled by user");
+        } else {
+             setAuthError(`Error: ${error.message}`);
+        }
+     } finally {
+        setIsAuthLoading(false);
+     }
+  };
+
+  const handleLogout = async () => {
+     try {
+        await signOut(auth);
+        setAuthError(null);
+     } catch (error) {
+        console.error("Logout failed", error);
+     }
+  };
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-slide-up">
         <h2 className="text-2xl font-black text-[var(--text-main)] italic mb-6">SETTINGS</h2>
         
+        {/* Auth Section */}
+        <div className="mb-6 p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+            {user ? (
+                <div className="flex flex-col gap-3">
+                   <div className="flex items-center gap-3">
+                      {user.photoURL && <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full" />}
+                      <div className="text-sm font-bold text-[var(--text-main)] truncate">{user.displayName}</div>
+                   </div>
+                   <button 
+                      onClick={handleLogout}
+                      className="w-full py-2 bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-lg text-xs font-black uppercase tracking-widest"
+                   >
+                      Sign Out
+                   </button>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-3">
+                    <button 
+                    onClick={handleLogin}
+                    disabled={isAuthLoading}
+                    className={`w-full py-3 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex justify-center items-center gap-2 ${
+                        isAuthLoading 
+                        ? 'bg-gray-500 cursor-wait opacity-70' 
+                        : 'bg-[#4285F4] hover:bg-[#357ae8]'
+                    }`}
+                    >
+                    {isAuthLoading ? (
+                        <span>Connecting...</span>
+                    ) : (
+                        <>
+                            <span>G</span>
+                            <span>Sign in with Google</span>
+                        </>
+                    )}
+                    </button>
+                    {authError && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                            <div className="text-xs text-red-500 font-bold mb-1">Authentication Failed</div>
+                            <div className="text-[10px] text-[var(--text-muted)] leading-tight">{authError}</div>
+                            {authError.includes('Domain not authorized') && (
+                                <div className="mt-2 text-[10px] text-[var(--text-main)] bg-red-500/10 p-2 rounded border border-red-500/20">
+                                    <strong>Fix:</strong> Add <code>{window.location.hostname}</code> to <em>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</em>.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+
         <div className="space-y-4 mb-8">
            <div className="flex justify-between items-center text-sm p-3 bg-[var(--bg-card)] rounded-xl">
              <span className="text-[var(--text-muted)] font-bold">Theme</span>
@@ -658,6 +755,20 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   const handleBackspace = () => {
      setUserInput(prev => prev.slice(0, -1));
   };
+  
+  const handleSkip = () => {
+     const q = gameState.questions[gameState.currentQuestionIndex];
+     // Count as mistake
+     setMistakes(prev => prev + 1);
+     
+     // Update heatmap with failure for all target notes
+     q.targetMelody.forEach(note => {
+        const interval = (note - q.keyCenter + 12) % 12;
+        onUpdateHeatmap(interval, false);
+     });
+     
+     handleNext();
+  };
 
   const handleCheckSequence = async () => {
      const q = gameState.questions[gameState.currentQuestionIndex];
@@ -865,13 +976,23 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
               <div className="flex gap-3 w-full animate-slide-up">
                  {!canAdvance && (
                      <>
-                        <button 
-                            onClick={handleBackspace} 
-                            disabled={userInput.length === 0}
-                            className="flex-1 py-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-card-hover)] disabled:opacity-30 transition-all"
-                        >
-                            ⌫ 
-                        </button>
+                        {!isExam ? (
+                            <button 
+                                onClick={handleBackspace} 
+                                disabled={userInput.length === 0}
+                                className="flex-1 py-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-card-hover)] disabled:opacity-30 transition-all"
+                            >
+                                ⌫ 
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={handleSkip} 
+                                className="flex-1 py-3 rounded-xl bg-[var(--bg-card)] border border-red-500/50 text-red-500 font-bold text-sm hover:bg-red-500/10 transition-all"
+                            >
+                                SKIP
+                            </button>
+                        )}
+                        
                         {isExam ? (
                              <button 
                                 onClick={handleCheckSequence}
@@ -968,42 +1089,41 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   );
 };
 
-interface AppContentProps {
-  stats: UserStats;
-  onOpenSettings: () => void;
-  handleComplete: (xp: number, passed: boolean, maxXP: number, id?: number) => void;
+const AppContent: React.FC<{ 
+  stats: UserStats; 
+  onOpenSettings: () => void; 
+  handleComplete: (xp: number, passed: boolean, maxXP: number, id?: number) => void; 
   handleUpdateHeatmap: (interval: number, correct: boolean) => void;
   onToggleTheme: () => void;
-}
-
-const AppContent: React.FC<AppContentProps> = ({ stats, onOpenSettings, handleComplete, handleUpdateHeatmap, onToggleTheme }) => {
-  const location = useLocation();
+}> = ({ stats, onOpenSettings, handleComplete, handleUpdateHeatmap, onToggleTheme }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
 
-  // Hide hamburger menu during gameplay
-  const hideMenu = location.pathname.includes('/play') || location.pathname === '/dojo' || location.pathname.includes('/practice/');
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location]);
 
   return (
     <>
-      {!hideMenu && <MenuButton onClick={() => setIsMenuOpen(true)} />}
+      <MenuButton onClick={() => setIsMenuOpen(true)} />
       
       <SideMenu 
         isOpen={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
-        onOpenSettings={onOpenSettings}
-        stats={stats}
+        onOpenSettings={onOpenSettings} 
+        stats={stats} 
       />
 
       <Routes>
         <Route path="/" element={<WelcomeScreen stats={stats} onOpenSettings={onOpenSettings} />} />
-        <Route path="/stats" element={<div className="p-8 pt-20 text-[var(--text-main)]"><button onClick={() => window.location.hash = '/'} className="mb-4 text-[var(--text-muted)]">← Back</button><Heatmap data={stats.heatmap} theme={stats.theme} /></div>} />
-        <Route path="/levels" element={<LevelSelector />} />
+        <Route path="/dojo" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
         <Route path="/practice" element={<PracticeSelector />} />
+        <Route path="/practice/:difficulty" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
         <Route path="/exam" element={<ExamSelector stats={stats} />} />
+        <Route path="/levels" element={<LevelSelector />} />
         <Route path="/level/:level" element={<ChallengeList stats={stats} />} />
         <Route path="/play/:challengeId" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
-        <Route path="/dojo" element={<GameSession stats={stats} onComplete={(xp, passed, maxXP) => handleComplete(xp, passed, maxXP)} onUpdateHeatmap={handleUpdateHeatmap} />} />
-        <Route path="/practice/:difficulty" element={<GameSession stats={stats} onComplete={(xp, passed, maxXP) => handleComplete(xp, passed, maxXP)} onUpdateHeatmap={handleUpdateHeatmap} />} />
+        <Route path="/stats" element={<WelcomeScreen stats={stats} onOpenSettings={onOpenSettings} />} />
       </Routes>
     </>
   );
@@ -1012,10 +1132,31 @@ const AppContent: React.FC<AppContentProps> = ({ stats, onOpenSettings, handleCo
 const App: React.FC = () => {
   const [stats, setStats] = useState<UserStats>(StorageService.load());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Listen for Auth changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Load cloud stats and merge with current local stats
+        const syncedStats = await StorageService.syncWithCloud(currentUser.uid, stats);
+        setStats(syncedStats);
+      }
+    });
+    return () => unsubscribe();
+  }, []); // Run once on mount
 
   useEffect(() => {
+    // Save to local storage
     StorageService.save(stats);
-  }, [stats]);
+    
+    // Save to cloud if logged in
+    if (user) {
+        // Debounce could be added here for performance, but for now safe to save
+        StorageService.saveToCloud(user.uid, stats);
+    }
+  }, [stats, user]);
   
   // Set body background color to avoid flashes
   useEffect(() => {
@@ -1120,7 +1261,8 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)} 
         onReset={handleReset} 
         onToggleTheme={handleToggleTheme}
-        stats={stats} 
+        stats={stats}
+        user={user} 
       />
 
       <style>{`

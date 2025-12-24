@@ -1,5 +1,7 @@
 
 import { UserStats } from '../types';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 const STORAGE_KEY = 'phenom_user_stats_v1';
 
@@ -16,30 +18,14 @@ const INITIAL_STATS: UserStats = {
 };
 
 export const StorageService = {
+  // --- Local Storage ---
   load(): UserStats {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return INITIAL_STATS;
       
       const parsed = JSON.parse(saved);
-      // Merge with initial stats to ensure new fields are present if schema changes
-      const stats = { ...INITIAL_STATS, ...parsed };
-      
-      // Check for broken streak on load
-      if (stats.lastPlayedDate) {
-        const last = new Date(stats.lastPlayedDate);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - last.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        // If more than 2 days (yesterday + today buffer), streak is broken
-        // Note: Simple check. For strict daily, we'd check if yesterday was played.
-        // Let's rely on simple string comparison for "Yesterday" logic in update, 
-        // but for display, if it's been > 48 hours, maybe reset?
-        // For now, simply return stored stats, update logic handles the reset/increment.
-      }
-      
-      return stats;
+      return { ...INITIAL_STATS, ...parsed };
     } catch (e) {
       console.error("Failed to load stats", e);
       return INITIAL_STATS;
@@ -59,7 +45,6 @@ export const StorageService = {
     return INITIAL_STATS;
   },
 
-  // Helper to calculate new streak based on completion
   updateStreak(currentStats: UserStats): UserStats {
     const today = new Date().toISOString().split('T')[0];
     const lastDate = currentStats.lastPlayedDate;
@@ -67,7 +52,6 @@ export const StorageService = {
     let newStreak = currentStats.streak;
 
     if (lastDate === today) {
-      // Already played today, no streak change
       return { ...currentStats, lastPlayedDate: today };
     }
 
@@ -78,7 +62,7 @@ export const StorageService = {
     if (lastDate === yesterdayString) {
       newStreak += 1;
     } else {
-      newStreak = 1; // Broken streak or new start
+      newStreak = 1;
     }
 
     return {
@@ -86,5 +70,61 @@ export const StorageService = {
       streak: newStreak,
       lastPlayedDate: today
     };
+  },
+
+  // --- Cloud Storage (Firestore) ---
+
+  /**
+   * Loads data from Firestore.
+   * Strategy:
+   * 1. If cloud data exists, merge it with local data (taking max XP, unlocking all challenges).
+   * 2. If cloud data does NOT exist, we assume this is a new cloud user and upload their current local stats.
+   */
+  async syncWithCloud(uid: string, localStats: UserStats): Promise<UserStats> {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const cloudStats = userSnap.data() as UserStats;
+        
+        // MERGE STRATEGY: Combine progress
+        const mergedStats: UserStats = {
+            ...localStats,
+            xp: Math.max(localStats.xp, cloudStats.xp),
+            level: Math.max(localStats.level, cloudStats.level),
+            // Combine unlocked challenges
+            unlockedChallenges: Array.from(new Set([...localStats.unlockedChallenges, ...cloudStats.unlockedChallenges])),
+            // Keep max high scores
+            highScores: { ...localStats.highScores, ...cloudStats.highScores },
+            // Heatmap: Average them out, or take the one with more data? Let's take Cloud as truth if it exists.
+            heatmap: cloudStats.heatmap, 
+            theme: localStats.theme, // Keep local preference
+            streak: Math.max(localStats.streak, cloudStats.streak)
+        };
+
+        // Save the merged version back to both
+        this.save(mergedStats);
+        await setDoc(userRef, mergedStats);
+        
+        return mergedStats;
+      } else {
+        // First time cloud user: Upload local stats
+        await setDoc(userRef, localStats);
+        return localStats;
+      }
+    } catch (error) {
+      console.error("Error syncing with cloud:", error);
+      return localStats; // Fallback to local
+    }
+  },
+
+  async saveToCloud(uid: string, stats: UserStats) {
+    try {
+        const userRef = doc(db, 'users', uid);
+        await setDoc(userRef, stats);
+    } catch (error) {
+        console.error("Error saving to cloud:", error);
+    }
   }
 };
