@@ -124,7 +124,7 @@ const generatePracticeQuestions = (difficulty: string, stats: UserStats, count: 
 };
 
 const generateChallengeQuestions = (challenge: Challenge): Question[] => {
-  return Array.from({ length: 10 }).map(() => {
+  return Array.from({ length: challenge.tasksCount || 10 }).map(() => {
     const keyCenter = (challenge.isModulating || Math.random() > 0.8) ? Math.floor(Math.random() * 12) + 54 : 60;
     const melody: number[] = [];
     for(let i=0; i < challenge.sequenceLength; i++) {
@@ -188,6 +188,7 @@ const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings:
             <button onClick={() => handleNav('/')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:italic transition-all">HOME</button>
             <button onClick={() => handleNav('/dojo')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:italic transition-all">DAILY DOJO</button>
             <button onClick={() => handleNav('/practice')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:italic transition-all">PRACTICE MODE</button>
+            <button onClick={() => handleNav('/exam')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:italic transition-all">EXAM MODE</button>
             <button onClick={() => handleNav('/levels')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:italic transition-all">EXERCISES</button>
             <button onClick={() => handleNav('/stats')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:italic transition-all">PROFILE</button>
           </nav>
@@ -197,7 +198,7 @@ const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings:
            <button onClick={handleSettings} className="w-full py-4 border border-[var(--border-color)] rounded-xl text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-main)] transition-all">
              Settings
            </button>
-           <div className="text-[10px] text-center text-[var(--text-muted)] font-mono">v1.2.0 BETA</div>
+           <div className="text-[10px] text-center text-[var(--text-muted)] font-mono">v1.3.1 EXAM</div>
         </div>
 
       </div>
@@ -252,7 +253,7 @@ const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void; onReset: (
   );
 };
 
-const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; maxXP: number; onContinue: () => void }> = ({ xp, accuracy, passed, maxXP, onContinue }) => {
+const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; maxXP: number; onContinue: () => void; isExam?: boolean }> = ({ xp, accuracy, passed, maxXP, onContinue, isExam }) => {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] items-center justify-center p-6 animate-fade-in relative overflow-hidden">
       {/* Confetti / Burst Background */}
@@ -274,7 +275,7 @@ const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; 
         <OwlMascot state={passed ? "success" : "fail"} className="w-48 h-48 mb-8" />
         
         <h2 className={`text-3xl font-black italic mb-2 tracking-tight drop-shadow-lg ${passed ? 'text-[#FFD700]' : 'text-red-500'}`}>
-            {passed ? "Session Cleared!" : "Session Failed"}
+            {isExam ? (passed ? "Exam Passed!" : "Exam Failed") : (passed ? "Session Cleared!" : "Session Failed")}
         </h2>
         <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs mb-10">
             {passed ? "Qualification Met" : "Did not qualify"}
@@ -282,7 +283,7 @@ const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; 
         
         <div className="grid grid-cols-2 gap-4 w-full mb-12">
            <div className="bg-[var(--bg-card)] border border-yellow-500/30 rounded-2xl p-4 flex flex-col items-center shadow-lg">
-              <div className="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">XP Earned</div>
+              <div className="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">{isExam ? "Score" : "XP Earned"}</div>
               <div className="flex items-center text-[var(--text-main)]">
                  <span className="text-2xl mr-2">⚡</span>
                  <span className="text-3xl font-black">{xp}</span>
@@ -290,7 +291,7 @@ const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; 
            </div>
            
            <div className="bg-[var(--bg-card)] border border-[#00FFCC]/30 rounded-2xl p-4 flex flex-col items-center shadow-lg">
-              <div className="text-[10px] font-black text-[#00FFCC] uppercase tracking-widest mb-1">Pass Req.</div>
+              <div className="text-[10px] font-black text-[#00FFCC] uppercase tracking-widest mb-1">{isExam ? "Pass Req." : "Pass Req."}</div>
               <div className="flex items-center text-[var(--text-main)]">
                  <span className="text-2xl mr-2">🎯</span>
                  <span className="text-3xl font-black">{Math.floor(maxXP * 0.8)}</span>
@@ -401,6 +402,51 @@ const PracticeSelector: React.FC = () => {
   );
 };
 
+const ExamSelector: React.FC<{ stats: UserStats }> = ({ stats }) => {
+  const navigate = useNavigate();
+  const levels = [DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER];
+  
+  // Find exam IDs for each level
+  const examIds = useMemo(() => {
+    const ids: Record<string, number> = {};
+    levels.forEach(l => {
+        const exam = CURRICULUM.find(c => c.level === l && c.isExam);
+        if (exam) ids[l] = exam.id;
+    });
+    return ids;
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-6 pt-20">
+      <div className="flex items-center mb-10">
+        <button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button>
+        <h2 className="text-2xl font-black text-[var(--text-main)] italic tracking-tight">Exam Mode</h2>
+      </div>
+      <p className="text-[var(--text-muted)] mb-8 text-sm">Strict testing. No immediate feedback. Pass to prove mastery.</p>
+      <div className="grid grid-cols-1 gap-6">
+        {levels.map((lvl, idx) => {
+            const id = examIds[lvl];
+            const isUnlocked = stats.unlockedChallenges.includes(id);
+            return (
+              <button
+                key={lvl}
+                onClick={() => id && navigate(`/play/${id}`)}
+                className={`group relative flex flex-col p-8 rounded-[2.5rem] border transition-all active:scale-95 shadow-sm bg-[var(--bg-card)] border-[var(--border-color)] hover:border-purple-500 cursor-pointer`}
+              >
+                <div className="text-[var(--text-muted)] font-black text-[10px] tracking-[0.3em] uppercase mb-2">Exam {idx + 1}</div>
+                <div className="text-3xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">{lvl} EXAM</div>
+                <div className="text-[var(--text-muted)] text-sm mt-1">{isUnlocked ? 'Ready to Start' : 'Attempt Early (Test Out)'}</div>
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
+                   <span className="text-4xl">🎓</span>
+                </div>
+              </button>
+            );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const LevelSelector: React.FC = () => {
   const navigate = useNavigate();
   const levels = [DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER];
@@ -464,18 +510,20 @@ const ChallengeList: React.FC<{ stats: UserStats }> = ({ stats }) => {
               disabled={!isUnlocked}
               onClick={() => navigate(`/play/${c.id}`)}
               className={`w-full flex items-center p-4 rounded-2xl transition-all ${
-                isSolved 
-                  ? 'bg-[#00FFCC]/10 border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 active:scale-[0.98]'
-                  : isUnlocked 
-                    ? 'bg-[var(--bg-card)] border border-[var(--border-color)] hover:bg-[var(--bg-card-hover)] active:scale-[0.98]' 
-                    : 'opacity-30 grayscale cursor-not-allowed bg-[var(--bg-card)]'
+                c.isExam 
+                   ? (isSolved ? 'bg-purple-500/10 border-purple-500/30' : isUnlocked ? 'bg-purple-900/20 border-purple-500/50 hover:bg-purple-900/30' : 'opacity-30 grayscale cursor-not-allowed bg-[var(--bg-card)]')
+                   : (isSolved 
+                    ? 'bg-[#00FFCC]/10 border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 active:scale-[0.98]'
+                    : isUnlocked 
+                      ? 'bg-[var(--bg-card)] border border-[var(--border-color)] hover:bg-[var(--bg-card-hover)] active:scale-[0.98]' 
+                      : 'opacity-30 grayscale cursor-not-allowed bg-[var(--bg-card)]')
               }`}
             >
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${isSolved ? 'bg-[#00FFCC]/20' : 'bg-[var(--bg-main)]'}`}>
-                 <span className="text-[var(--text-muted)]">{isSolved ? '🏆' : '🎵'}</span>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${c.isExam ? 'bg-purple-500/20' : isSolved ? 'bg-[#00FFCC]/20' : 'bg-[var(--bg-main)]'}`}>
+                 <span className="text-[var(--text-muted)]">{c.isExam ? '🎓' : isSolved ? '🏆' : '🎵'}</span>
               </div>
               <div className="flex-1 text-left">
-                <div className={`font-bold text-sm leading-tight ${isSolved ? 'text-[#00FFCC]' : 'text-[var(--text-main)]'}`}>{c.title}</div>
+                <div className={`font-bold text-sm leading-tight ${c.isExam ? 'text-purple-400' : isSolved ? 'text-[#00FFCC]' : 'text-[var(--text-main)]'}`}>{c.title}</div>
                 <div className="text-[var(--text-muted)] text-[10px] uppercase font-black tracking-tighter mt-0.5">{c.subtitle}</div>
                 <div className="text-[var(--text-muted)] text-[10px] mt-1 font-mono">High score: {highScore}</div>
               </div>
@@ -505,6 +553,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   const isDailyDojo = !challengeId && !difficulty;
   const isPracticeMode = !!difficulty;
   const challenge = useMemo(() => (isDailyDojo || isPracticeMode) ? null : CURRICULUM.find(c => c.id === Number(challengeId)), [challengeId, isDailyDojo, isPracticeMode]);
+  const isExam = challenge?.isExam ?? false;
 
   const [gameState, setGameState] = useState<GameState>({
     currentQuestionIndex: 0,
@@ -614,8 +663,32 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
      const q = gameState.questions[gameState.currentQuestionIndex];
      const isCorrect = JSON.stringify(userInput) === JSON.stringify(q.targetMelody);
 
+     if (isExam) {
+         // EXAM MODE: No feedback, silent grading
+         if (isCorrect) {
+             setGameState(p => ({ ...p, xpGained: p.xpGained + (10 * q.targetMelody.length) }));
+             // Silently update heatmap for correct
+             q.targetMelody.forEach(note => {
+                const interval = (note - q.keyCenter + 12) % 12;
+                onUpdateHeatmap(interval, true);
+             });
+         } else {
+             setMistakes(prev => prev + 1);
+             // Silently update heatmap for errors
+             userInput.forEach((note, i) => {
+                 const target = q.targetMelody[i];
+                 if (note !== target) {
+                     const interval = (target - q.keyCenter + 12) % 12;
+                     onUpdateHeatmap(interval, false);
+                 }
+             });
+         }
+         handleNext();
+         return;
+     }
+
+     // STANDARD MODE
      if (isCorrect) {
-         // CORRECT
          q.targetMelody.forEach(note => {
             const interval = (note - q.keyCenter + 12) % 12;
             onUpdateHeatmap(interval, true);
@@ -623,7 +696,6 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
 
          setFeedback({ type: 'correct' });
          
-         // Award XP only on first attempt
          if (!hasAttempted) {
              const earnedXP = 10 * q.targetMelody.length;
              setGameState(p => ({ ...p, xpGained: p.xpGained + earnedXP }));
@@ -633,7 +705,6 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
          setHasAttempted(true);
 
      } else {
-         // WRONG
          userInput.forEach((note, i) => {
              const target = q.targetMelody[i];
              if (note !== target) {
@@ -643,10 +714,9 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
          });
          
          setMistakes(prev => prev + 1);
-         setHasAttempted(true); // XP forfeited for this question
+         setHasAttempted(true);
          setAttempts(prev => prev + 1);
          
-         // If this is the 3rd miss, reveal answer
          if (attempts + 1 >= 3) {
              setIsAnswerRevealed(true);
          }
@@ -659,23 +729,19 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
          
          setShowOverlay(true);
 
-         // Generate new sequence ID for this feedback session
          const currentSeqId = ++feedbackSequenceId.current;
 
-         // Sequence Correction Protocol
          await new Promise(r => setTimeout(r, 600));
          if (feedbackSequenceId.current !== currentSeqId) return; 
-         await audioEngine.playMelody(userInput, 180); // Wrong
+         await audioEngine.playMelody(userInput, 180);
          
-         // Only play correct answer if revealed or about to be retried
-         // For now, let's keep audio feedback consistent, just hide visual
          await new Promise(r => setTimeout(r, 500));
          if (feedbackSequenceId.current !== currentSeqId) return;
-         await audioEngine.playMelody(q.targetMelody, 120); // Correct
+         await audioEngine.playMelody(q.targetMelody, 120);
          
          await new Promise(r => setTimeout(r, 700));
          if (feedbackSequenceId.current !== currentSeqId) return;
-         await audioEngine.playNote(q.keyCenter, 1.0); // Root
+         await audioEngine.playNote(q.keyCenter, 1.0);
          
          if (feedbackSequenceId.current === currentSeqId) {
              setCanAdvance(true);
@@ -684,6 +750,12 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   };
 
   const handleNext = () => {
+      setUserInput([]);
+      setFeedback({ type: null });
+      setIsAnswering(false);
+      setCanAdvance(false);
+      setHasAttempted(false);
+
       if (gameState.currentQuestionIndex < gameState.questions.length - 1) {
         setGameState(p => ({ ...p, currentQuestionIndex: p.currentQuestionIndex + 1 }));
       } else if (isPracticeMode) {
@@ -698,10 +770,8 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   };
   
   const handleSummaryContinue = () => {
-    // Determine Passing Grade (80%)
     const maxPotentialXP = gameState.questions.reduce((acc, q) => acc + (10 * q.targetMelody.length), 0);
-    const passingScore = maxPotentialXP * 0.8;
-    const passed = gameState.xpGained >= passingScore;
+    const passed = gameState.xpGained >= (maxPotentialXP * 0.8);
     
     onComplete(gameState.xpGained, passed, maxPotentialXP, challenge?.id);
   };
@@ -713,24 +783,23 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
       setUserInput([]);
       setCanAdvance(false);
       setIsAnswering(true);
-      // attempts are NOT reset, so they can hit 3rd miss count
   };
 
   const currentQ = gameState.questions[gameState.currentQuestionIndex];
-  const progressPercent = (gameState.currentQuestionIndex / 10) * 100;
+  const progressPercent = (gameState.currentQuestionIndex / gameState.questions.length) * 100;
   
   if (showSummary) {
-    const accuracy = Math.max(0, 100 - (mistakes * 10));
+    const accuracy = Math.max(0, 100 - (mistakes * 10)); // Rough estimate
     const maxSessionXP = gameState.questions.reduce((acc, q) => acc + (10 * q.targetMelody.length), 0);
     const passed = gameState.xpGained >= (maxSessionXP * 0.8);
-    return <SessionSummary xp={gameState.xpGained} accuracy={accuracy} passed={passed} maxXP={maxSessionXP} onContinue={handleSummaryContinue} />;
+    return <SessionSummary xp={gameState.xpGained} accuracy={accuracy} passed={passed} maxXP={maxSessionXP} onContinue={handleSummaryContinue} isExam={isExam} />;
   }
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] overflow-hidden">
       <div className="px-6 pt-6 pb-2 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md">
         <div className="flex items-center gap-4 mb-4">
-          <button onClick={() => navigate(isPracticeMode ? '/practice' : isDailyDojo ? '/' : '/levels')} className="text-[var(--text-muted)]">✕</button>
+          <button onClick={() => navigate(isPracticeMode ? '/practice' : isExam ? '/exam' : isDailyDojo ? '/' : '/levels')} className="text-[var(--text-muted)]">✕</button>
           {!isPracticeMode && <div className="flex-1 h-2.5 bg-[var(--bg-card)] rounded-full overflow-hidden"><div className="h-full bg-[#00FFCC] transition-all duration-700" style={{ width: `${progressPercent}%` }} /></div>}
           {isPracticeMode && <div className="flex-1 flex justify-center"><div className="text-[10px] uppercase font-black tracking-widest text-[var(--text-muted)]">Endless Mode</div></div>}
           <div className="flex items-center gap-3">
@@ -752,8 +821,12 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
 
       <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20 pointer-events-none">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00FFCC] rounded-full blur-[100px]" style={{ visibility: feedback.type === 'correct' ? 'visible' : 'hidden' }}></div>
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500 rounded-full blur-[100px]" style={{ visibility: feedback.type === 'wrong' ? 'visible' : 'hidden' }}></div>
+           {!isExam && (
+               <>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00FFCC] rounded-full blur-[100px]" style={{ visibility: feedback.type === 'correct' ? 'visible' : 'hidden' }}></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500 rounded-full blur-[100px]" style={{ visibility: feedback.type === 'wrong' ? 'visible' : 'hidden' }}></div>
+               </>
+           )}
         </div>
         
         {/* Dynamic Boxes Visualization */}
@@ -772,7 +845,9 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                         key={i} 
                         className={`w-12 h-12 rounded-xl border-2 transition-all duration-300 flex items-center justify-center font-bold text-sm ${
                             filled 
-                            ? 'bg-[#00FFCC] border-[#00FFCC] text-black shadow-[0_0_15px_rgba(0,255,204,0.4)] scale-100' 
+                            ? (isExam 
+                                ? 'bg-[var(--bg-card)] border-[var(--text-muted)] text-[var(--text-main)] shadow-sm scale-100'
+                                : 'bg-[#00FFCC] border-[#00FFCC] text-black shadow-[0_0_15px_rgba(0,255,204,0.4)] scale-100')
                             : 'bg-transparent border-[var(--border-color)] scale-90 opacity-50'
                         }`}
                     >
@@ -797,13 +872,23 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                         >
                             ⌫ 
                         </button>
-                        <button 
-                            onClick={handleCheckSequence}
-                            disabled={userInput.length !== currentQ?.targetMelody.length}
-                            className="flex-[2] py-3 rounded-xl bg-[#00FFCC] text-black font-black text-sm hover:brightness-110 disabled:opacity-30 disabled:saturate-0 transition-all shadow-[0_4px_0_#00AA88] active:translate-y-1 active:shadow-none"
-                        >
-                            CHECK
-                        </button>
+                        {isExam ? (
+                             <button 
+                                onClick={handleCheckSequence}
+                                disabled={userInput.length !== currentQ?.targetMelody.length}
+                                className="flex-[2] py-3 rounded-xl bg-purple-500 text-white font-black text-sm hover:bg-purple-400 transition-all shadow-[0_4px_0_#9333ea] active:translate-y-1 active:shadow-none"
+                            >
+                                SUBMIT
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={handleCheckSequence}
+                                disabled={userInput.length !== currentQ?.targetMelody.length}
+                                className="flex-[2] py-3 rounded-xl bg-[#00FFCC] text-black font-black text-sm hover:brightness-110 disabled:opacity-30 disabled:saturate-0 transition-all shadow-[0_4px_0_#00AA88] active:translate-y-1 active:shadow-none"
+                            >
+                                CHECK
+                            </button>
+                        )}
                      </>
                  )}
                  {canAdvance && (
@@ -829,7 +914,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
         theme={stats.theme} 
       />
 
-      {showOverlay && (
+      {showOverlay && !isExam && (
         <div className="absolute inset-x-0 bottom-0 z-50 bg-[var(--bg-main)] rounded-t-[3rem] border-t-4 border-red-500 p-8 animate-slide-up shadow-2xl">
           <h3 className="text-red-500 font-black text-3xl italic tracking-tighter mb-4">MISSED IT</h3>
           
@@ -914,6 +999,7 @@ const AppContent: React.FC<AppContentProps> = ({ stats, onOpenSettings, handleCo
         <Route path="/stats" element={<div className="p-8 pt-20 text-[var(--text-main)]"><button onClick={() => window.location.hash = '/'} className="mb-4 text-[var(--text-muted)]">← Back</button><Heatmap data={stats.heatmap} theme={stats.theme} /></div>} />
         <Route path="/levels" element={<LevelSelector />} />
         <Route path="/practice" element={<PracticeSelector />} />
+        <Route path="/exam" element={<ExamSelector stats={stats} />} />
         <Route path="/level/:level" element={<ChallengeList stats={stats} />} />
         <Route path="/play/:challengeId" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
         <Route path="/dojo" element={<GameSession stats={stats} onComplete={(xp, passed, maxXP) => handleComplete(xp, passed, maxXP)} onUpdateHeatmap={handleUpdateHeatmap} />} />
@@ -956,8 +1042,13 @@ const App: React.FC = () => {
              nextStats.highScores = { ...nextStats.highScores, [id]: xp };
         }
 
-        if (!nextStats.unlockedChallenges.includes(id + 1) && id < 150) {
-          nextStats.unlockedChallenges = [...nextStats.unlockedChallenges, id + 1];
+        // Logic adjusted for new sequential ID system (exams included)
+        // Check if next ID exists in curriculum
+        const nextId = id + 1;
+        const exists = CURRICULUM.some(c => c.id === nextId);
+        
+        if (exists && !nextStats.unlockedChallenges.includes(nextId)) {
+          nextStats.unlockedChallenges = [...nextStats.unlockedChallenges, nextId];
         }
       } else {
         if (passed) {
@@ -968,13 +1059,16 @@ const App: React.FC = () => {
       return nextStats;
     });
     
-    // Navigate back
+    // Navigate back logic
     if (id) {
-       window.location.hash = `/level/${CURRICULUM.find(c => c.id === id)?.level}`;
+       // If it was an exam, maybe go to Exam Selector or Level Selector?
+       const challenge = CURRICULUM.find(c => c.id === id);
+       if (challenge?.isExam) {
+           window.location.hash = '/exam';
+       } else {
+           window.location.hash = `/level/${challenge?.level}`;
+       }
     } else {
-       // Dojo or Practice stays or goes home? 
-       // Usually practice loops, but if they exit via menu/button they are handled.
-       // If complete is called (e.g. from summary), go home.
        window.location.hash = '/';
     }
   };

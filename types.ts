@@ -22,6 +22,7 @@ export interface Challenge {
   isModulating: boolean;
   chaosMode: boolean;
   tasksCount: number;
+  isExam?: boolean;
 }
 
 export interface UserStats {
