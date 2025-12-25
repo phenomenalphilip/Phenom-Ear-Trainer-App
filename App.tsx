@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut, onAuthStateChanged, User, AuthError } from 'firebase/auth';
-import { auth, googleProvider } from './services/firebase';
+import { auth, googleProvider, firebaseConfig } from './services/firebase';
 
 import Piano from './components/Piano';
 import Heatmap from './components/Heatmap';
@@ -220,27 +220,53 @@ const SettingsModal: React.FC<{
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Helper to extract clean domain even from blob URLs
+  const getDomainForAuth = () => {
+      // Use host if available (standard)
+      if (window.location.host) return window.location.host;
+      
+      // Fallback for blob URLs: extract origin
+      const origin = window.location.origin;
+      if (origin && origin !== 'null') {
+          return origin.replace(/^https?:\/\//, '');
+      }
+      
+      // Last resort
+      return window.location.href;
+  };
+
   const handleLogin = async () => {
      if (isAuthLoading) return;
      setIsAuthLoading(true);
      setAuthError(null);
+     
      try {
         await signInWithPopup(auth, googleProvider);
      } catch (error: any) {
-        console.error("Login failed", error);
+        console.log("Auth Error Details:", error);
         
         // Handle specific Firebase errors
-        if (error.code === 'auth/unauthorized-domain') {
-            setAuthError(`Domain not authorized: ${window.location.hostname}`);
+        if (error.code === 'auth/popup-closed-by-user' || error.message?.includes('closed by user')) {
+             console.log("Popup closed by user");
+             setAuthError(null);
+        } else if (error.code === 'auth/unauthorized-domain') {
+            const domain = getDomainForAuth();
+            let msg = `Domain not authorized: ${domain}`;
+            if (domain.includes('127.0.0.1')) msg += " (Try localhost)";
+            setAuthError(msg);
         } else if (error.code === 'auth/popup-blocked') {
             setAuthError("Popup blocked. Please allow popups for this site.");
-        } else if (error.code === 'auth/cancelled-popup-request') {
-             // User closed the popup, or clicked twice. Ignore.
-             console.log("Popup cancelled by user");
+        } else if (error.code === 'auth/cancelled-popup-request' || error.message?.includes('cancelled')) {
+             console.log("Popup cancelled by user (request)");
+             setAuthError(null);
+        } else if (error.message?.includes('Pending promise was never set')) {
+             console.warn("Firebase race condition");
+             setAuthError("Connection interruption. Please try clicking again.");
         } else {
              setAuthError(`Error: ${error.message}`);
         }
      } finally {
+        // Ensure loading state is reset so user can try again
         setIsAuthLoading(false);
      }
   };
@@ -257,12 +283,13 @@ const SettingsModal: React.FC<{
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-slide-up">
+      <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
         <h2 className="text-2xl font-black text-[var(--text-main)] italic mb-6">SETTINGS</h2>
         
         {/* Auth Section */}
         <div className="mb-6 p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
             {user ? (
+                // LOGGED IN UI
                 <div className="flex flex-col gap-3">
                    <div className="flex items-center gap-3">
                       {user.photoURL && <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full" />}
@@ -276,6 +303,7 @@ const SettingsModal: React.FC<{
                    </button>
                 </div>
             ) : (
+                // LOGGED OUT UI
                 <div className="flex flex-col gap-3">
                     <button 
                     onClick={handleLogin}
@@ -283,7 +311,7 @@ const SettingsModal: React.FC<{
                     className={`w-full py-3 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex justify-center items-center gap-2 ${
                         isAuthLoading 
                         ? 'bg-gray-500 cursor-wait opacity-70' 
-                        : 'bg-[#4285F4] hover:bg-[#357ae8]'
+                        : authError ? 'bg-red-500 hover:bg-red-600' : 'bg-[#4285F4] hover:bg-[#357ae8]'
                     }`}
                     >
                     {isAuthLoading ? (
@@ -291,17 +319,36 @@ const SettingsModal: React.FC<{
                     ) : (
                         <>
                             <span>G</span>
-                            <span>Sign in with Google</span>
+                            <span>{authError ? "Retry Sign in" : "Sign in with Google"}</span>
                         </>
                     )}
                     </button>
                     {authError && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg animate-fade-in">
                             <div className="text-xs text-red-500 font-bold mb-1">Authentication Failed</div>
-                            <div className="text-[10px] text-[var(--text-muted)] leading-tight">{authError}</div>
+                            <div className="text-[10px] text-[var(--text-muted)] leading-tight break-words">{authError}</div>
+                            
+                            {/* Detailed Help for Domain Error */}
                             {authError.includes('Domain not authorized') && (
-                                <div className="mt-2 text-[10px] text-[var(--text-main)] bg-red-500/10 p-2 rounded border border-red-500/20">
-                                    <strong>Fix:</strong> Add <code>{window.location.hostname}</code> to <em>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</em>.
+                                <div className="mt-2 text-[10px] text-[var(--text-main)] bg-black/20 p-2 rounded border border-white/5">
+                                    <div className="font-bold mb-1 text-blue-400">ACTION REQUIRED:</div>
+                                    <div className="opacity-70 mb-2">
+                                        The error means Firebase blocked the request from:
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <code className="bg-black/40 px-2 py-1 rounded flex-1 truncate font-mono select-all text-xs">
+                                            {getDomainForAuth()}
+                                        </code>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(getDomainForAuth());
+                                                alert('Domain copied! Go to Firebase Console > Authentication > Settings > Authorized domains to paste it.');
+                                            }}
+                                            className="px-2 py-1 bg-[#00FFCC] text-black rounded font-bold hover:brightness-110 text-[10px]"
+                                        >
+                                            COPY
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -1,10 +1,9 @@
-
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyC8Q6CqzYB3JmreYeo15WWsQqEtGXUu4UI",
   authDomain: "phenom-ear-trainer.firebaseapp.com",
   projectId: "phenom-ear-trainer",
