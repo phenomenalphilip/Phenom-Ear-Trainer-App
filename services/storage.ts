@@ -1,5 +1,5 @@
 
-import { UserStats, SessionLog } from '../types';
+import { UserStats, SessionLog, InteractionLog } from '../types';
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { User } from 'firebase/auth';
@@ -11,7 +11,11 @@ const INITIAL_STATS: UserStats = {
   xp: 0,
   hearts: 5,
   level: 1,
-  heatmap: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+  heatmap: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5], // Initial neutral state
+  degreeHistory: {
+      0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 
+      6: [], 7: [], 8: [], 9: [], 10: [], 11: []
+  },
   unlockedChallenges: [1],
   highScores: {},
   lastPlayedDate: null,
@@ -26,6 +30,10 @@ export const StorageService = {
       if (!saved) return INITIAL_STATS;
       
       const parsed = JSON.parse(saved);
+      // Ensure degreeHistory exists for migrated users
+      if (!parsed.degreeHistory) {
+          parsed.degreeHistory = INITIAL_STATS.degreeHistory;
+      }
       return { ...INITIAL_STATS, ...parsed };
     } catch (e) {
       console.error("Failed to load stats", e);
@@ -83,6 +91,9 @@ export const StorageService = {
       if (userSnap.exists()) {
         const cloudStats = userSnap.data() as UserStats;
         
+        // Ensure cloud stats has degreeHistory
+        const safeCloudDegreeHistory = cloudStats.degreeHistory || INITIAL_STATS.degreeHistory;
+
         // MERGE STRATEGY: Combine progress
         const mergedStats: UserStats = {
             ...localStats,
@@ -91,6 +102,7 @@ export const StorageService = {
             unlockedChallenges: Array.from(new Set([...localStats.unlockedChallenges, ...cloudStats.unlockedChallenges])),
             highScores: { ...localStats.highScores, ...cloudStats.highScores },
             heatmap: cloudStats.heatmap, 
+            degreeHistory: safeCloudDegreeHistory, // Trust cloud for history if available
             theme: localStats.theme, // Keep local preference
             streak: Math.max(localStats.streak, cloudStats.streak)
         };
@@ -146,6 +158,18 @@ export const StorageService = {
         });
     } catch (error) {
         console.error("Error logging session:", error);
+    }
+  },
+
+  async logInteraction(user: User, logData: Omit<InteractionLog, 'timestamp'>) {
+    try {
+        const interactionsRef = collection(db, 'users', user.uid, 'interactions');
+        await addDoc(interactionsRef, {
+            ...logData,
+            timestamp: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error logging interaction:", error);
     }
   }
 };

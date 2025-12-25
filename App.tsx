@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { signInWithPopup, signOut, onAuthStateChanged, User, AuthError } from 'firebase/auth';
@@ -5,7 +6,7 @@ import { auth, googleProvider, firebaseConfig } from './services/firebase';
 
 import Piano from './components/Piano';
 import Heatmap from './components/Heatmap';
-import { UserStats, GameState, Question, DifficultyLevel, Challenge } from './types';
+import { UserStats, GameState, Question, DifficultyLevel, Challenge, InteractionLog } from './types';
 import { COLORS, OwlMascot, INTERVAL_NAMES, OCTAVE_NOTES } from './constants';
 import { audioEngine } from './services/audioEngine';
 import { generateCurriculum } from './services/curriculum';
@@ -117,12 +118,17 @@ const generateChallengeQuestions = (challenge: Challenge): Question[] => {
   });
 };
 
-const MenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <button onClick={onClick} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 w-10 h-10 flex flex-col justify-center items-end gap-1.5 group cursor-pointer p-2">
-    <div className="w-6 h-0.5 bg-gray-500 group-hover:bg-[var(--text-main)] transition-colors"></div>
-    <div className="w-4 h-0.5 bg-gray-500 group-hover:bg-[var(--text-main)] transition-colors group-hover:w-6 duration-300"></div>
-    <div className="w-5 h-0.5 bg-gray-500 group-hover:bg-[var(--text-main)] transition-colors group-hover:w-6 duration-200"></div>
-  </button>
+const TopBar: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <div className="z-40 h-16 w-full flex-none bg-[var(--bg-card)] border-b border-[var(--border-color)] flex items-center justify-between px-4 shadow-sm relative">
+    <span className="font-bold text-[var(--text-main)] text-lg tracking-tight italic">Phenom Ear Trainer</span>
+    <button onClick={onClick} className="w-10 h-10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+       <div className="flex flex-col gap-1">
+          <div className="w-1 h-1 bg-current rounded-full"></div>
+          <div className="w-1 h-1 bg-current rounded-full"></div>
+          <div className="w-1 h-1 bg-current rounded-full"></div>
+       </div>
+    </button>
+  </div>
 );
 
 const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings: () => void; stats: UserStats }> = ({ isOpen, onClose, onOpenSettings, stats }) => {
@@ -143,6 +149,7 @@ const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings:
             <button onClick={() => handleNav('/practice')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all">PRACTICE MODE</button>
             <button onClick={() => handleNav('/exam')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all">EXAM MODE</button>
             <button onClick={() => handleNav('/levels')} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all">EXERCISES</button>
+            <button onClick={handleSettings} className="text-left text-xl font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all">SETTINGS</button>
           </nav>
         </div>
       </div>
@@ -152,11 +159,36 @@ const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings:
 
 const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void; onReset: () => void; onToggleTheme: () => void; stats: UserStats; user: User | null; }> = ({ isOpen, onClose, onReset, onToggleTheme, stats, user }) => {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   const handleLogin = async () => {
      setIsAuthLoading(true);
-     try { await signInWithPopup(auth, googleProvider); } catch (error) { console.error(error); } finally { setIsAuthLoading(false); }
+     setAuthError(null);
+     try { 
+        await signInWithPopup(auth, googleProvider); 
+     } catch (error: any) { 
+        console.error("Auth Error:", error); 
+        if (error.code === 'auth/unauthorized-domain') {
+            setAuthError("This domain is not authorized in Firebase Console.");
+        } else if (error.code === 'auth/popup-closed-by-user') {
+            setAuthError("Sign-in cancelled.");
+        } else {
+            setAuthError("Sign-in failed. Please try again.");
+        }
+     } finally { 
+        setIsAuthLoading(false); 
+     }
   };
-  const handleLogout = async () => { try { await signOut(auth); onReset(); } catch (error) { console.error(error); } };
+  
+  const handleLogout = async () => { 
+      try { 
+          await signOut(auth); 
+          onReset(); 
+      } catch (error) { 
+          console.error(error); 
+      } 
+  };
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -169,9 +201,18 @@ const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void; onReset: (
                    <button onClick={handleLogout} className="w-full py-2 bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-muted)] rounded-lg text-xs font-black uppercase">Sign Out</button>
                 </div>
             ) : (
-                <button onClick={handleLogin} disabled={isAuthLoading} className="w-full py-2 sm:py-3 text-white rounded-xl text-sm font-bold bg-[#4285F4]">{isAuthLoading ? "Connecting..." : "Sign in with Google"}</button>
+                <div className="flex flex-col gap-2">
+                    <button onClick={handleLogin} disabled={isAuthLoading} className="w-full py-2 sm:py-3 text-white rounded-xl text-sm font-bold bg-[#4285F4]">{isAuthLoading ? "Connecting..." : "Sign in with Google"}</button>
+                    {authError && <div className="text-red-500 text-[10px] font-bold text-center">{authError}</div>}
+                </div>
             )}
         </div>
+        
+        <button onClick={onToggleTheme} className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-main)] py-4 rounded-xl font-bold mb-4 flex items-center justify-between px-6">
+           <span>THEME</span>
+           <span className="uppercase text-xs tracking-widest text-[var(--text-muted)] bg-[var(--bg-main)] px-2 py-1 rounded border border-[var(--border-color)]">{stats.theme}</span>
+        </button>
+
         <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/50 text-red-500 py-4 rounded-xl font-bold mb-4">RESET PROGRESS</button>
         <button onClick={onClose} className="w-full bg-[var(--bg-card)] text-[var(--text-main)] border border-[var(--border-color)] py-4 rounded-xl font-bold">CLOSE</button>
       </div>
@@ -200,14 +241,18 @@ const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; 
 const WelcomeScreen: React.FC<{ stats: UserStats, onOpenSettings: () => void }> = ({ stats, onOpenSettings }) => {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 sm:p-8 items-center justify-between py-6">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 sm:p-8 items-center justify-between pb-6 pt-4">
       <div className="flex flex-col items-center w-full">
         <div className="flex justify-between w-full mb-4 bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--border-color)]">
             <div className="flex flex-col items-center"><span className="text-[10px] text-[var(--text-muted)] font-black">XP</span><span className="text-[#00FFCC] font-bold text-lg">{stats.xp}</span></div>
             <div className="flex flex-col items-center"><span className="text-[10px] text-[var(--text-muted)] font-black">Level</span><span className="text-blue-400 font-bold text-lg">{stats.level}</span></div>
             <div className="flex flex-col items-center"><span className="text-[10px] text-[var(--text-muted)] font-black">Lives</span><span className="text-red-500 font-bold text-lg">❤️ {stats.hearts}</span></div>
         </div>
-        <div className="mb-4 relative"><OwlMascot className="w-24 h-24 sm:w-48 sm:h-48" /></div>
+        
+        <div className="mb-4 w-full flex justify-center">
+           <Heatmap data={stats.heatmap} theme={stats.theme} className="w-56 h-56 sm:w-64 sm:h-64" />
+        </div>
+        
         <h1 className="text-4xl sm:text-6xl font-black italic tracking-tighter text-[var(--text-main)] mb-1">PHENOM</h1>
         <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.4em] text-[10px] mb-8">The Elite Ear Dojo</p>
       </div>
@@ -222,7 +267,7 @@ const WelcomeScreen: React.FC<{ stats: UserStats, onOpenSettings: () => void }> 
 const PracticeSelector: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 pt-16">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4">
       <div className="flex items-center mb-6"><button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button><h2 className="text-2xl font-black italic">Practice Mode</h2></div>
       <div className="grid grid-cols-1 gap-4">
         {[DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER].map(lvl => (
@@ -246,7 +291,7 @@ const ExamSelector: React.FC<{ stats: UserStats }> = ({ stats }) => {
     return ids;
   }, []);
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 pt-16">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4">
       <div className="flex items-center mb-6"><button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button><h2 className="text-2xl font-black italic">Exam Mode</h2></div>
       <div className="grid grid-cols-1 gap-4">
         {[DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER].map(lvl => (
@@ -262,7 +307,7 @@ const ExamSelector: React.FC<{ stats: UserStats }> = ({ stats }) => {
 const LevelSelector: React.FC = () => {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 pt-16">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4">
       <div className="flex items-center mb-6"><button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button><h2 className="text-2xl font-black italic">Select Level</h2></div>
       <div className="grid grid-cols-1 gap-4">
         {[DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER].map(lvl => (
@@ -280,7 +325,7 @@ const ChallengeList: React.FC<{ stats: UserStats }> = ({ stats }) => {
   const navigate = useNavigate();
   const filteredChallenges = useMemo(() => CURRICULUM.filter(c => c.level === level), [level]);
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] overflow-hidden pt-12">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] overflow-hidden">
       <div className="p-4 border-b border-[var(--border-color)] bg-[var(--bg-main)] sticky top-0 z-10">
         <div className="flex items-center justify-between mb-2">
           <button onClick={() => navigate('/levels')} className="text-[var(--text-muted)] text-2xl">←</button>
@@ -291,9 +336,20 @@ const ChallengeList: React.FC<{ stats: UserStats }> = ({ stats }) => {
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {filteredChallenges.map((c) => {
           const isUnlocked = stats.unlockedChallenges.includes(c.id);
+          const highScore = stats.highScores[c.id] || 0;
+          const isSolved = highScore > 0;
+          
           return (
-            <button key={c.id} disabled={!isUnlocked} onClick={() => navigate(`/play/${c.id}`)} className={`w-full flex items-center p-3 rounded-2xl border transition-all ${isUnlocked ? 'bg-[var(--bg-card)] border-[var(--border-color)]' : 'opacity-30 grayscale'}`}>
-              <div className="flex-1 text-left"><div className="font-bold text-sm text-[var(--text-main)]">{c.title}</div><div className="text-[var(--text-muted)] text-[10px] uppercase font-black">{c.subtitle}</div></div>
+            <button key={c.id} disabled={!isUnlocked} onClick={() => navigate(`/play/${c.id}`)} className={`w-full flex items-center p-3 rounded-2xl border transition-all ${isUnlocked ? 'bg-[var(--bg-card)] border-[var(--border-color)] hover:bg-[var(--bg-card-hover)]' : 'opacity-30 grayscale cursor-not-allowed'}`}>
+               <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 ${isSolved ? 'bg-[#00FFCC]/20 text-[#00FFCC]' : 'bg-[var(--bg-main)] text-[var(--text-muted)]'}`}>
+                 {isSolved ? '✓' : isUnlocked ? '►' : '🔒'}
+               </div>
+               <div className="flex-1 text-left">
+                  <div className="font-bold text-sm text-[var(--text-main)]">{c.title}</div>
+                  <div className="text-[var(--text-muted)] text-[10px] uppercase font-black">{c.subtitle}</div>
+                  {isSolved && <div className="text-[#00FFCC] text-[10px] font-mono mt-1">Best: {highScore} XP</div>}
+               </div>
+               {isUnlocked && <div className="text-[var(--text-muted)] text-[10px] font-bold uppercase ml-2">{isSolved ? 'REPLAY' : 'START'}</div>}
             </button>
           );
         })}
@@ -305,7 +361,7 @@ const ChallengeList: React.FC<{ stats: UserStats }> = ({ stats }) => {
 interface GameSessionProps {
   stats: UserStats;
   onComplete: (result: { xp: number, passed: boolean, maxXP: number, accuracy: number, challengeId?: number, mode: 'CHALLENGE' | 'PRACTICE' | 'DOJO' | 'EXAM', difficulty?: string }) => void;
-  onUpdateHeatmap: (interval: number, correct: boolean) => void;
+  onUpdateHeatmap: (interval: number, correct: boolean, logData: Omit<InteractionLog, 'timestamp'>) => void;
 }
 
 const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHeatmap }) => {
@@ -333,6 +389,9 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   const [hasAttempted, setHasAttempted] = useState(false);
   const [canAdvance, setCanAdvance] = useState(false);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
+  const [currentAttempts, setCurrentAttempts] = useState(0);
+  
+  const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     let qs: Question[];
@@ -352,11 +411,14 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
     setCanAdvance(false);
     setHasAttempted(false);
     setShowOverlay(false);
+    setCurrentAttempts(0);
+    setIsAnswerRevealed(false);
     
     await audioEngine.playCadence(q.keyCenter);
     const bpm = (challenge?.level === DifficultyLevel.MASTER || difficulty === DifficultyLevel.MASTER) ? 140 : 100;
     await audioEngine.playMelody(q.targetMelody, bpm);
     setIsAnswering(true);
+    startTimeRef.current = Date.now();
   };
 
   useEffect(() => {
@@ -372,20 +434,58 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
 
   const handleCheckSequence = async () => {
      const q = gameState.questions[gameState.currentQuestionIndex];
+     const latency = Date.now() - startTimeRef.current;
      const isCorrect = JSON.stringify(userInput) === JSON.stringify(q.targetMelody);
+     
      if (isCorrect) {
          setFeedback({ type: 'correct' });
          if (!hasAttempted) setGameState(p => ({ ...p, xpGained: p.xpGained + (10 * q.targetMelody.length) }));
          setCanAdvance(true); 
          setHasAttempted(true);
-         q.targetMelody.forEach(note => onUpdateHeatmap((note - q.keyCenter + 12) % 12, true));
+         
+         // Log each note interaction
+         q.targetMelody.forEach((targetNote, idx) => {
+             const userNote = userInput[idx];
+             const interval = (targetNote - q.keyCenter + 12) % 12;
+             onUpdateHeatmap(interval, true, {
+                 target_note_absolute: targetNote,
+                 target_degree: INTERVAL_NAMES[interval],
+                 user_input_note: userNote,
+                 user_input_degree: INTERVAL_NAMES[(userNote - q.keyCenter + 12) % 12],
+                 is_octave_error: false,
+                 latency_ms: latency
+             });
+         });
+         
      } else {
          setMistakes(prev => prev + 1);
+         const nextAttempts = currentAttempts + 1;
+         setCurrentAttempts(nextAttempts);
+         if (nextAttempts >= 3) setIsAnswerRevealed(true);
+         
          setFeedback({ type: 'wrong', userSequence: userInput, targetSequence: q.targetMelody });
          setShowOverlay(true);
-         q.targetMelody.forEach(note => onUpdateHeatmap((note - q.keyCenter + 12) % 12, false));
-         await audioEngine.playMelody(userInput, 180);
-         await audioEngine.playMelody(q.targetMelody, 120);
+         
+         // Log for heatmap updates (incorrect)
+         q.targetMelody.forEach((targetNote, idx) => {
+             const userNote = userInput[idx]; // Might be undefined if user didn't finish sequence
+             const interval = (targetNote - q.keyCenter + 12) % 12;
+             const userInterval = userNote ? (userNote - q.keyCenter + 12) % 12 : -1;
+             
+             // Check for octave error: correct degree but wrong absolute pitch
+             const isOctaveError = userNote ? (userInterval === interval && userNote !== targetNote) : false;
+             
+             onUpdateHeatmap(interval, false, {
+                 target_note_absolute: targetNote,
+                 target_degree: INTERVAL_NAMES[interval],
+                 user_input_note: userNote || 0,
+                 user_input_degree: userNote ? INTERVAL_NAMES[userInterval] : 'N/A',
+                 is_octave_error: isOctaveError,
+                 latency_ms: latency
+             });
+         });
+         
+         await audioEngine.playFailSound();
      }
   };
 
@@ -402,6 +502,20 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
     const sessionMode: 'CHALLENGE' | 'PRACTICE' | 'DOJO' | 'EXAM' = isExam ? 'EXAM' : isDailyDojo ? 'DOJO' : (isPracticeMode ? 'PRACTICE' : 'CHALLENGE');
     onComplete({ xp: gameState.xpGained, passed: gameState.xpGained >= (maxPotentialXP * 0.8), maxXP: maxPotentialXP, accuracy: 100, challengeId: challenge?.id, mode: sessionMode, difficulty });
   };
+  
+  const handleExit = () => {
+      if (isDailyDojo) {
+          navigate('/');
+      } else if (isPracticeMode) {
+          navigate('/practice');
+      } else if (isExam) {
+           navigate('/exam');
+      } else if (challenge) {
+          navigate(`/level/${challenge.level}`);
+      } else {
+          navigate('/');
+      }
+  };
 
   const currentQ = gameState.questions[gameState.currentQuestionIndex];
   if (showSummary) return <SessionSummary xp={gameState.xpGained} accuracy={100} passed={gameState.xpGained >= (gameState.questions.reduce((a,q)=>a+(10*q.targetMelody.length),0) * 0.8)} maxXP={gameState.questions.reduce((a,q)=>a+(10*q.targetMelody.length),0)} onContinue={handleSummaryContinue} isExam={isExam} totalXP={stats.xp + gameState.xpGained} />;
@@ -411,7 +525,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
       <div className="px-4 pt-4 pb-2 border-b border-[var(--border-color)]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <button onClick={() => navigate('/')} className="text-[var(--text-muted)] text-xl mr-4">✕</button>
+            <button onClick={handleExit} className="text-[var(--text-muted)] text-xl mr-4">✕</button>
             <div className="w-48 h-2 bg-[var(--bg-card)] rounded-full overflow-hidden"><div className="h-full bg-[#00FFCC]" style={{ width: `${(gameState.currentQuestionIndex / gameState.questions.length) * 100}%` }} /></div>
           </div>
           <div className="flex items-center gap-4">
@@ -424,7 +538,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                 <div className="text-[var(--text-main)] font-black text-xs uppercase tracking-tight">{isDailyDojo ? 'Daily Dojo' : isPracticeMode ? `${difficulty} Practice` : challenge?.title}</div>
                 <div className="text-[var(--text-muted)] font-bold text-[10px]">Target: {currentQ?.targetMelody.length} note(s)</div>
             </div>
-            <button onClick={() => playChallenge()} className="text-[var(--text-muted)] font-black text-[10px] tracking-widest bg-[var(--bg-card)] px-3 py-1.5 rounded-full hover:bg-[var(--bg-card-hover)]">REPEAT</button>
+            {/* Play Again button is rendered below in the controls area */}
         </div>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
@@ -432,11 +546,12 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
             {currentQ?.targetMelody.map((_, i) => <div key={i} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-bold text-sm ${userInput.length > i ? 'bg-[#00FFCC] border-[#00FFCC] text-black shadow-[0_0_15px_rgba(0,255,204,0.4)]' : 'bg-transparent border-[var(--border-color)]'}`}>{userInput.length > i ? getSolfege(userInput[i], currentQ.keyCenter) : ''}</div>)}
         </div>
         <OwlMascot state={feedback.type === 'correct' ? 'success' : feedback.type === 'wrong' ? 'fail' : 'idle'} className="w-24 h-24 mb-6" />
-        <div className="h-14 w-full max-w-xs flex gap-3">
+        <div className="h-14 w-full max-w-sm flex gap-2 sm:gap-3">
             {!canAdvance ? (
                 <>
-                    <button onClick={() => setUserInput(prev => prev.slice(0, -1))} disabled={userInput.length === 0} className="w-16 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] flex items-center justify-center rounded-xl">⌫</button>
-                    <button onClick={handleCheckSequence} disabled={userInput.length !== currentQ?.targetMelody.length} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-main)] font-black rounded-xl disabled:opacity-30">CHECK</button>
+                    <button onClick={() => playChallenge()} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-main)] font-black text-xs sm:text-sm rounded-xl hover:bg-[var(--bg-card-hover)] uppercase">Play Again</button>
+                    <button onClick={() => setUserInput(prev => prev.slice(0, -1))} disabled={userInput.length === 0} className="w-14 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] flex items-center justify-center rounded-xl hover:bg-[var(--bg-card-hover)]">⌫</button>
+                    <button onClick={handleCheckSequence} disabled={userInput.length !== currentQ?.targetMelody.length} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-main)] font-black rounded-xl disabled:opacity-30 hover:bg-[var(--bg-card-hover)]">CHECK</button>
                 </>
             ) : (
                 <button onClick={handleNext} className="w-full bg-blue-500 text-white font-black rounded-xl">NEXT →</button>
@@ -445,11 +560,64 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
       </div>
       <Piano onNoteClick={handleNoteClick} rootNote={currentQ?.keyCenter || 60} highlightedNote={userInput[userInput.length - 1]} theme={stats.theme} />
       {showOverlay && (
-        <div className="absolute inset-x-0 bottom-0 z-50 bg-[var(--bg-main)] rounded-t-3xl border-t-4 border-red-500 p-6 animate-slide-up shadow-2xl">
+        <div className="absolute inset-x-0 bottom-0 z-50 bg-[var(--bg-main)] rounded-t-3xl border-t-4 border-red-500 p-6 animate-slide-up shadow-2xl max-h-[85vh] overflow-y-auto">
           <h3 className="text-red-500 font-black text-2xl italic mb-4">MISSED IT</h3>
-          <div className="flex gap-3">
-            <button onClick={() => { setShowOverlay(false); setUserInput([]); setIsAnswering(true); }} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-main)] py-3 rounded-2xl font-black">RETRY</button>
-            <button onClick={() => { setShowOverlay(false); handleNext(); }} className="flex-1 bg-red-600 py-3 rounded-2xl font-black text-white">NEXT</button>
+          
+          <div className="space-y-4 mb-6">
+            <div className="bg-[var(--bg-card)] p-3 rounded-xl border border-[var(--border-color)]">
+              <div className="text-[10px] uppercase text-[var(--text-muted)] font-black tracking-wider mb-1">Key Center</div>
+              <div className="text-lg font-bold text-[var(--text-main)]">
+                 {getNoteName(currentQ.keyCenter)} <span className="text-[var(--text-muted)] font-normal">({getSolfege(currentQ.keyCenter, currentQ.keyCenter)})</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+               <div>
+                  <div className="text-[10px] uppercase text-[var(--text-muted)] font-black tracking-wider mb-1">You Played</div>
+                  <div className="flex flex-wrap gap-2">
+                     {userInput.map((n, i) => (
+                       <div key={i} className="px-2 py-1 bg-red-500/10 border border-red-500/30 rounded text-red-500 font-mono text-sm font-bold">
+                          {getNoteName(n)} ({getSolfege(n, currentQ.keyCenter)})
+                       </div>
+                     ))}
+                     {userInput.length === 0 && <span className="text-[var(--text-muted)] text-sm italic">Nothing played</span>}
+                  </div>
+               </div>
+               
+               <div>
+                  <div className="flex justify-between items-center mb-1">
+                     <div className="text-[10px] uppercase text-[var(--text-muted)] font-black tracking-wider">Target</div>
+                     {!isAnswerRevealed && (
+                         <span className="text-[10px] text-yellow-500 font-bold">Hidden (Attempt {currentAttempts}/3)</span>
+                     )}
+                  </div>
+                  {isAnswerRevealed ? (
+                      <div className="flex flex-wrap gap-2">
+                         {currentQ.targetMelody.map((n, i) => (
+                           <div key={i} className="px-2 py-1 bg-[#00FFCC]/10 border border-[#00FFCC]/30 rounded text-[#00FFCC] font-mono text-sm font-bold">
+                              {getNoteName(n)} ({getSolfege(n, currentQ.keyCenter)})
+                           </div>
+                         ))}
+                      </div>
+                  ) : (
+                      <div className="w-full py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded border-dashed flex items-center justify-center">
+                          <span className="text-[var(--text-muted)] text-xs">???</span>
+                      </div>
+                  )}
+               </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+             {!isAnswerRevealed && (
+                 <button onClick={() => setIsAnswerRevealed(true)} className="w-full py-3 bg-yellow-500/10 border border-yellow-500/50 text-yellow-500 rounded-2xl font-black">
+                     SHOW ANSWER
+                 </button>
+             )}
+             <div className="flex gap-3">
+                <button onClick={() => { setShowOverlay(false); setUserInput([]); setIsAnswering(true); }} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-main)] py-3 rounded-2xl font-black">RETRY</button>
+                <button onClick={() => { setShowOverlay(false); handleNext(); }} className="flex-1 bg-red-600 py-3 rounded-2xl font-black text-white">NEXT</button>
+             </div>
           </div>
         </div>
       )}
@@ -461,7 +629,7 @@ const AppContent: React.FC<{
   stats: UserStats; 
   onOpenSettings: () => void; 
   handleComplete: (result: { xp: number, passed: boolean, maxXP: number, accuracy: number, challengeId?: number, mode: 'CHALLENGE' | 'PRACTICE' | 'DOJO' | 'EXAM', difficulty?: string }) => void; 
-  handleUpdateHeatmap: (interval: number, correct: boolean) => void;
+  handleUpdateHeatmap: (interval: number, correct: boolean, logData: Omit<InteractionLog, 'timestamp'>) => void;
   onToggleTheme: () => void;
 }> = ({ stats, onOpenSettings, handleComplete, handleUpdateHeatmap, onToggleTheme }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -469,21 +637,23 @@ const AppContent: React.FC<{
   const isGameSession = location.pathname.startsWith('/play') || location.pathname.startsWith('/dojo') || location.pathname.startsWith('/practice/');
   useEffect(() => setIsMenuOpen(false), [location]);
   return (
-    <>
-      {!isGameSession && <MenuButton onClick={() => setIsMenuOpen(true)} />}
+    <div className="flex flex-col h-full w-full">
+      {!isGameSession && <TopBar onClick={() => setIsMenuOpen(true)} />}
       <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onOpenSettings={onOpenSettings} stats={stats} />
-      <Routes>
-        <Route path="/" element={<WelcomeScreen stats={stats} onOpenSettings={onOpenSettings} />} />
-        <Route path="/dojo" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
-        <Route path="/practice" element={<PracticeSelector />} />
-        <Route path="/practice/:difficulty" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
-        <Route path="/exam" element={<ExamSelector stats={stats} />} />
-        <Route path="/levels" element={<LevelSelector />} />
-        <Route path="/level/:level" element={<ChallengeList stats={stats} />} />
-        <Route path="/play/:challengeId" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
-        <Route path="/stats" element={<WelcomeScreen stats={stats} onOpenSettings={onOpenSettings} />} />
-      </Routes>
-    </>
+      <div className="flex-1 overflow-hidden relative">
+        <Routes>
+            <Route path="/" element={<WelcomeScreen stats={stats} onOpenSettings={onOpenSettings} />} />
+            <Route path="/dojo" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
+            <Route path="/practice" element={<PracticeSelector />} />
+            <Route path="/practice/:difficulty" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
+            <Route path="/exam" element={<ExamSelector stats={stats} />} />
+            <Route path="/levels" element={<LevelSelector />} />
+            <Route path="/level/:level" element={<ChallengeList stats={stats} />} />
+            <Route path="/play/:challengeId" element={<GameSession stats={stats} onComplete={handleComplete} onUpdateHeatmap={handleUpdateHeatmap} />} />
+            <Route path="/stats" element={<WelcomeScreen stats={stats} onOpenSettings={onOpenSettings} />} />
+        </Routes>
+      </div>
+    </div>
   );
 };
 
@@ -526,18 +696,54 @@ const App: React.FC = () => {
     window.location.hash = '/';
   };
 
-  const handleUpdateHeatmap = (interval: number, correct: boolean) => {
+  const handleUpdateHeatmap = (interval: number, correct: boolean, logData: Omit<InteractionLog, 'timestamp'>) => {
     setStats(prev => {
-      const h = [...prev.heatmap];
-      h[interval] = Math.min(1, Math.max(0, h[interval] + (correct ? 0.05 : -0.1)));
-      return { ...prev, heatmap: h };
+      // 1. Update Degree History (Rolling 100)
+      const currentHistory = prev.degreeHistory[interval] || [];
+      const newDegreeHistory = [...currentHistory, correct];
+      if (newDegreeHistory.length > 100) newDegreeHistory.shift();
+
+      const updatedHistory = {
+          ...prev.degreeHistory,
+          [interval]: newDegreeHistory
+      };
+
+      // 2. Recalculate Heatmap Value for this interval
+      // Avoid division by zero, default to neutral 0.5 if no history (though here we just added one)
+      const accuracy = newDegreeHistory.length > 0 
+          ? newDegreeHistory.filter(Boolean).length / newDegreeHistory.length 
+          : 0.5;
+
+      const newHeatmap = [...prev.heatmap];
+      newHeatmap[interval] = accuracy;
+
+      return { 
+          ...prev, 
+          heatmap: newHeatmap,
+          degreeHistory: updatedHistory
+      };
     });
+    
+    // 3. Log to Cloud if user authenticated
+    if (user) {
+        StorageService.logInteraction(user, logData);
+    }
   };
 
   const handleReset = () => {
     const fresh = StorageService.reset();
     setStats(fresh);
     setIsSettingsOpen(false);
+  };
+
+  const handleToggleTheme = () => {
+    const newTheme = stats.theme === 'dark' ? 'light' : 'dark';
+    const newStats = { ...stats, theme: newTheme };
+    setStats(newStats);
+    StorageService.save(newStats);
+    if (user) {
+        StorageService.saveToCloud(user, newStats);
+    }
   };
   
   const themeStyles = {
@@ -552,9 +758,9 @@ const App: React.FC = () => {
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto relative shadow-2xl overflow-hidden bg-[var(--bg-main)] border-x border-[var(--border-color)]" style={themeStyles}>
       <HashRouter>
-        <AppContent stats={stats} onOpenSettings={() => setIsSettingsOpen(true)} handleComplete={handleComplete} handleUpdateHeatmap={handleUpdateHeatmap} onToggleTheme={() => setStats({...stats, theme: stats.theme === 'dark' ? 'light' : 'dark'})} />
+        <AppContent stats={stats} onOpenSettings={() => setIsSettingsOpen(true)} handleComplete={handleComplete} handleUpdateHeatmap={handleUpdateHeatmap} onToggleTheme={handleToggleTheme} />
       </HashRouter>
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onReset={handleReset} onToggleTheme={() => {}} stats={stats} user={user} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onReset={handleReset} onToggleTheme={handleToggleTheme} stats={stats} user={user} />
       <style>{`
         @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

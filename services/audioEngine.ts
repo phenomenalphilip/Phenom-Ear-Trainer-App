@@ -137,6 +137,34 @@ class AudioEngine {
       await new Promise(r => setTimeout(r, noteDuration * 1000));
     }
   }
+
+  async playFailSound() {
+    if (!this.ctx || !this.masterGain) await this.init();
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    
+    // Create a dissonant cluster for a "fail" sound
+    const freqs = [146.83, 110.00]; // D3, A2 roughly
+    
+    freqs.forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = i === 0 ? 'sawtooth' : 'square';
+        osc.frequency.setValueAtTime(f, t);
+        osc.frequency.linearRampToValueAtTime(f * 0.8, t + 0.3); // Slight pitch drop
+        
+        const gain = ctx.createGain();
+        gain.connect(this.masterGain!);
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+        
+        osc.start(t);
+        osc.stop(t + 0.45);
+        
+        setTimeout(() => {
+           try { gain.disconnect(); } catch(e){}
+        }, 500);
+    });
+  }
 }
 
 export const audioEngine = new AudioEngine();

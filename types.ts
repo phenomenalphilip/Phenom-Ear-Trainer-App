@@ -25,12 +25,23 @@ export interface Challenge {
   isExam?: boolean;
 }
 
+export interface InteractionLog {
+  timestamp: any; // Firestore Timestamp
+  target_note_absolute: number;
+  target_degree: string;
+  user_input_note: number;
+  user_input_degree: string;
+  is_octave_error: boolean;
+  latency_ms: number;
+}
+
 export interface UserStats {
   streak: number;
   xp: number;
   hearts: number;
   level: number;
   heatmap: number[];
+  degreeHistory: Record<number, boolean[]>; // 0-11 -> array of last 100 results (true=correct)
   unlockedChallenges: number[]; // Array of challenge IDs
   highScores: Record<number, number>; // Challenge ID -> Score
   lastPlayedDate: string | null; // ISO Date string YYYY-MM-DD
