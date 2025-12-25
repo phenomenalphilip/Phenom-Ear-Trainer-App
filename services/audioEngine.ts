@@ -5,12 +5,17 @@ class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
 
-  init() {
-    if (this.ctx) return;
+  async init() {
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') await this.ctx.resume();
+      return;
+    }
     this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.masterGain = this.ctx.createGain();
     this.masterGain.connect(this.ctx.destination);
-    this.masterGain.gain.value = 0.4; // Normalized master volume
+    this.masterGain.gain.value = 0.5; // Slightly boosted master
+    
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
   }
 
   private getFrequency(midi: number): number {
@@ -18,47 +23,37 @@ class AudioEngine {
   }
 
   async playNote(midi: number, duration = 0.5, type: InstrumentType = InstrumentType.PIANO) {
-    if (!this.ctx || !this.masterGain) this.init();
+    if (!this.ctx || !this.masterGain) await this.init();
     const ctx = this.ctx!;
     const t = ctx.currentTime;
     const freq = this.getFrequency(midi);
 
-    // Create a specific gain for this note to shape its envelope independently
     const noteGain = ctx.createGain();
     noteGain.connect(this.masterGain!);
 
     if (type === InstrumentType.PIANO) {
-      // --- High Quality Piano Synthesis ---
-      // A mix of Sine (Fundamental), Triangle (Body), and Filtered Saw (Harmonics/Hammer)
-
-      // 1. Fundamental (Pure Tone)
       const oscSine = ctx.createOscillator();
       oscSine.type = 'sine';
       oscSine.frequency.value = freq;
 
-      // 2. Body (Warmth)
       const oscTri = ctx.createOscillator();
       oscTri.type = 'triangle';
       oscTri.frequency.value = freq;
 
-      // 3. Hammer/Harmonics (Brightness)
       const oscSaw = ctx.createOscillator();
       oscSaw.type = 'sawtooth';
       oscSaw.frequency.value = freq;
 
-      // Filter for the Sawtooth to create the "plucked/struck" damping effect
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.Q.value = 0; // No resonance, just damping
-      filter.frequency.setValueAtTime(freq * 4, t); // Start bright
-      filter.frequency.exponentialRampToValueAtTime(freq, t + 0.2); // Quickly dampen to fundamental
+      filter.Q.value = 0;
+      filter.frequency.setValueAtTime(freq * 4, t);
+      filter.frequency.exponentialRampToValueAtTime(freq, t + 0.2);
 
-      // Mix Gains
       const gainSine = ctx.createGain(); gainSine.gain.value = 0.6;
       const gainTri = ctx.createGain(); gainTri.gain.value = 0.3;
       const gainSaw = ctx.createGain(); gainSaw.gain.value = 0.15;
 
-      // Connections
       oscSine.connect(gainSine);
       oscTri.connect(gainTri);
       oscSaw.connect(filter);
@@ -68,13 +63,10 @@ class AudioEngine {
       gainTri.connect(noteGain);
       gainSaw.connect(noteGain);
 
-      // Amplitude Envelope (ADSR approximation)
       noteGain.gain.setValueAtTime(0, t);
-      noteGain.gain.linearRampToValueAtTime(0.8, t + 0.015); // Fast, percussive attack
-      // Decay to silence over time, allowing a tail beyond the strict duration for realism
+      noteGain.gain.linearRampToValueAtTime(0.8, t + 0.015);
       noteGain.gain.exponentialRampToValueAtTime(0.01, t + duration + 0.5); 
 
-      // Start/Stop
       oscSine.start(t);
       oscTri.start(t);
       oscSaw.start(t);
@@ -84,13 +76,11 @@ class AudioEngine {
       oscTri.stop(stopTime);
       oscSaw.stop(stopTime);
 
-      // Garbage collection helper
       setTimeout(() => {
         try { noteGain.disconnect(); } catch(e) {}
-      }, (duration + 1.0) * 1000);
+      }, (duration + 1.1) * 1000);
 
     } else if (type === InstrumentType.RHODES) {
-      // Rhodes-ish sound (Sine with softer attack and longer sustain)
       const osc = ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.value = freq;
@@ -98,23 +88,22 @@ class AudioEngine {
       osc.connect(noteGain);
       
       noteGain.gain.setValueAtTime(0, t);
-      noteGain.gain.linearRampToValueAtTime(0.6, t + 0.03); // Softer attack
-      noteGain.gain.exponentialRampToValueAtTime(0.01, t + duration + 0.2);
+      // Rhodes is used for Cadence/Root - Needs to be very clear
+      noteGain.gain.linearRampToValueAtTime(0.9, t + 0.03); 
+      noteGain.gain.exponentialRampToValueAtTime(0.01, t + duration + 0.4);
       
       osc.start(t);
       osc.stop(t + duration + 0.5);
       
       setTimeout(() => {
           try { noteGain.disconnect(); } catch(e) {}
-      }, (duration + 0.5) * 1000);
+      }, (duration + 0.6) * 1000);
 
     } else {
-      // Generic/Guitar fallback
       const osc = ctx.createOscillator();
       osc.type = 'square';
       osc.frequency.value = freq;
       
-      // Lowpass to remove harsh digital edge
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.value = freq * 3;
@@ -136,16 +125,14 @@ class AudioEngine {
   }
 
   async playCadence(rootMidi: number) {
-    // Use Rhodes for the cadence to establish tonality warmly
-    await this.playNote(rootMidi, 1.5, InstrumentType.RHODES);
-    await new Promise(r => setTimeout(r, 1000));
+    await this.init(); // Ensure context is ready
+    await this.playNote(rootMidi, 1.2, InstrumentType.RHODES);
+    await new Promise(r => setTimeout(r, 800));
   }
 
   async playMelody(notes: number[], bpm: number = 100) {
     const noteDuration = 60 / bpm;
     for (const note of notes) {
-      // Play note slightly shorter than the interval to allow articulation, 
-      // but the tail in playNote will make it sound legato.
       this.playNote(note, noteDuration);
       await new Promise(r => setTimeout(r, noteDuration * 1000));
     }
