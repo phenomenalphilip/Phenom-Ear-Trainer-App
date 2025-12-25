@@ -37,6 +37,17 @@ export interface UserStats {
   theme: 'light' | 'dark';
 }
 
+export interface SessionLog {
+  challengeId?: number;
+  mode: 'CHALLENGE' | 'PRACTICE' | 'DOJO' | 'EXAM';
+  difficulty?: string;
+  xpEarned: number;
+  maxXP: number;
+  accuracy: number;
+  passed: boolean;
+  timestamp: any; // Firestore Timestamp
+}
+
 export interface Question {
   keyCenter: number;
   targetMelody: number[];

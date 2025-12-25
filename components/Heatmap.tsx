@@ -64,8 +64,8 @@ const Heatmap: React.FC<HeatmapProps> = ({ data, theme }) => {
   }, [data, theme]);
 
   return (
-    <div className="flex flex-col items-center">
-      <svg ref={svgRef} width="280" height="280"></svg>
+    <div className="flex flex-col items-center w-full max-w-[280px]">
+      <svg ref={svgRef} viewBox="0 0 240 240" className="w-full h-auto"></svg>
       <div className="text-xs uppercase tracking-widest text-[var(--text-muted)] mt-2 font-bold">Ear Capacity Map</div>
     </div>
   );

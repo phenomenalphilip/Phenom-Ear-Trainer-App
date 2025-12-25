@@ -148,7 +148,7 @@ const generateChallengeQuestions = (challenge: Challenge): Question[] => {
 const MenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button 
     onClick={onClick} 
-    className="absolute top-6 right-6 z-40 w-10 h-10 flex flex-col justify-center items-end gap-1.5 group cursor-pointer p-2"
+    className="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 w-10 h-10 flex flex-col justify-center items-end gap-1.5 group cursor-pointer p-2"
   >
     <div className="w-6 h-0.5 bg-gray-500 group-hover:bg-[var(--text-main)] transition-colors"></div>
     <div className="w-4 h-0.5 bg-gray-500 group-hover:bg-[var(--text-main)] transition-colors group-hover:w-6 duration-300"></div>
@@ -174,7 +174,7 @@ const SideMenu: React.FC<{ isOpen: boolean; onClose: () => void; onOpenSettings:
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className="absolute top-0 right-0 bottom-0 w-64 bg-[var(--bg-main)] border-l border-[var(--border-color)] p-8 shadow-2xl animate-slide-left flex flex-col justify-between">
+      <div className="absolute top-0 right-0 bottom-0 w-3/4 max-w-xs sm:w-64 bg-[var(--bg-main)] border-l border-[var(--border-color)] p-6 sm:p-8 shadow-2xl animate-slide-left flex flex-col justify-between">
         
         <div>
           <div className="flex justify-end mb-8">
@@ -283,7 +283,7 @@ const SettingsModal: React.FC<{
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
         <h2 className="text-2xl font-black text-[var(--text-main)] italic mb-6">SETTINGS</h2>
         
         {/* Auth Section */}
@@ -308,7 +308,7 @@ const SettingsModal: React.FC<{
                     <button 
                     onClick={handleLogin}
                     disabled={isAuthLoading}
-                    className={`w-full py-3 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex justify-center items-center gap-2 ${
+                    className={`w-full py-2 sm:py-3 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex justify-center items-center gap-2 ${
                         isAuthLoading 
                         ? 'bg-gray-500 cursor-wait opacity-70' 
                         : authError ? 'bg-red-500 hover:bg-red-600' : 'bg-[#4285F4] hover:bg-[#357ae8]'
@@ -402,50 +402,50 @@ const SessionSummary: React.FC<{ xp: number; accuracy: number; passed: boolean; 
     <div className="flex flex-col h-full bg-[var(--bg-main)] items-center justify-center p-6 animate-fade-in relative overflow-hidden">
       {/* Confetti / Burst Background */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-         <div className={`w-96 h-96 rounded-full blur-[120px] ${passed ? 'bg-[#00FFCC]' : 'bg-red-500'}`}></div>
+         <div className={`w-64 h-64 sm:w-96 sm:h-96 rounded-full blur-[120px] ${passed ? 'bg-[#00FFCC]' : 'bg-red-500'}`}></div>
       </div>
       
       {passed ? (
         <>
-            <div className="absolute top-20 left-10 text-yellow-500 animate-pulse text-4xl">✨</div>
-            <div className="absolute top-40 right-10 text-[#00FFCC] animate-pulse delay-75 text-5xl">✳️</div>
+            <div className="absolute top-20 left-10 text-yellow-500 animate-pulse text-3xl sm:text-4xl">✨</div>
+            <div className="absolute top-40 right-10 text-[#00FFCC] animate-pulse delay-75 text-4xl sm:text-5xl">✳️</div>
         </>
       ) : (
-        <div className="absolute top-20 right-10 text-red-500 animate-pulse text-4xl">💔</div>
+        <div className="absolute top-20 right-10 text-red-500 animate-pulse text-3xl sm:text-4xl">💔</div>
       )}
 
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm">
         
-        <OwlMascot state={passed ? "success" : "fail"} className="w-48 h-48 mb-8" />
+        <OwlMascot state={passed ? "success" : "fail"} className="w-32 h-32 sm:w-48 sm:h-48 mb-8" />
         
-        <h2 className={`text-3xl font-black italic mb-2 tracking-tight drop-shadow-lg ${passed ? 'text-[#FFD700]' : 'text-red-500'}`}>
+        <h2 className={`text-2xl sm:text-3xl font-black italic mb-2 tracking-tight drop-shadow-lg text-center ${passed ? 'text-[#FFD700]' : 'text-red-500'}`}>
             {isExam ? (passed ? "Exam Passed!" : "Exam Failed") : (passed ? "Session Cleared!" : "Session Failed")}
         </h2>
-        <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs mb-10">
+        <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs mb-10 text-center">
             {passed ? "Qualification Met" : "Did not qualify"}
         </p>
         
-        <div className="grid grid-cols-2 gap-4 w-full mb-12">
-           <div className="bg-[var(--bg-card)] border border-yellow-500/30 rounded-2xl p-4 flex flex-col items-center shadow-lg">
+        <div className="grid grid-cols-2 gap-4 w-full mb-8 sm:mb-12">
+           <div className="bg-[var(--bg-card)] border border-yellow-500/30 rounded-2xl p-3 sm:p-4 flex flex-col items-center shadow-lg">
               <div className="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">{isExam ? "Score" : "XP Earned"}</div>
               <div className="flex items-center text-[var(--text-main)]">
-                 <span className="text-2xl mr-2">⚡</span>
-                 <span className="text-3xl font-black">{xp}</span>
+                 <span className="text-xl sm:text-2xl mr-2">⚡</span>
+                 <span className="text-2xl sm:text-3xl font-black">{xp}</span>
               </div>
            </div>
            
-           <div className="bg-[var(--bg-card)] border border-[#00FFCC]/30 rounded-2xl p-4 flex flex-col items-center shadow-lg">
+           <div className="bg-[var(--bg-card)] border border-[#00FFCC]/30 rounded-2xl p-3 sm:p-4 flex flex-col items-center shadow-lg">
               <div className="text-[10px] font-black text-[#00FFCC] uppercase tracking-widest mb-1">{isExam ? "Pass Req." : "Pass Req."}</div>
               <div className="flex items-center text-[var(--text-main)]">
-                 <span className="text-2xl mr-2">🎯</span>
-                 <span className="text-3xl font-black">{Math.floor(maxXP * 0.8)}</span>
+                 <span className="text-xl sm:text-2xl mr-2">🎯</span>
+                 <span className="text-2xl sm:text-3xl font-black">{Math.floor(maxXP * 0.8)}</span>
               </div>
            </div>
         </div>
 
         <button 
           onClick={onContinue}
-          className={`w-full font-black text-xl py-5 rounded-2xl transition-all shadow-lg active:translate-y-1 active:shadow-none ${
+          className={`w-full font-black text-xl py-4 sm:py-5 rounded-2xl transition-all shadow-lg active:translate-y-1 active:shadow-none ${
               passed 
               ? 'bg-[#00FFCC] text-black shadow-[0_4px_0_#00AA88] hover:brightness-110' 
               : 'bg-[var(--bg-card)] text-[var(--text-main)] border border-[var(--border-color)] hover:bg-[var(--bg-card-hover)]'
@@ -468,9 +468,9 @@ const WelcomeScreen: React.FC<{ stats: UserStats, onOpenSettings: () => void }> 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-8 items-center justify-between py-10">
-      <div className="flex flex-col items-center w-full mt-8">
-        <div className="flex justify-between w-full mb-8 bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-color)]">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-6 sm:p-8 items-center justify-between py-8 sm:py-10">
+      <div className="flex flex-col items-center w-full mt-4 sm:mt-8">
+        <div className="flex justify-between w-full mb-6 sm:mb-8 bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-color)]">
             <div className="flex flex-col items-center">
                 <span className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest">XP</span>
                 <span className="text-[#00FFCC] font-bold text-xl">{stats.xp}</span>
@@ -487,16 +487,16 @@ const WelcomeScreen: React.FC<{ stats: UserStats, onOpenSettings: () => void }> 
 
         <div className="mb-8 relative">
            <div className="absolute inset-0 bg-[#00FFCC]/10 blur-[100px] rounded-full scale-150"></div>
-           <OwlMascot className="w-56 h-56 relative z-10" />
+           <OwlMascot className="w-40 h-40 sm:w-56 sm:h-56 relative z-10" />
         </div>
-        <h1 className="text-6xl font-black italic tracking-tighter text-[var(--text-main)] mb-2 drop-shadow-2xl">PHENOM</h1>
-        <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.5em] text-[10px] mb-8">The Elite Ear Dojo</p>
+        <h1 className="text-5xl sm:text-6xl font-black italic tracking-tighter text-[var(--text-main)] mb-2 drop-shadow-2xl">PHENOM</h1>
+        <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.5em] text-[10px] mb-8 text-center">The Elite Ear Dojo</p>
       </div>
 
       <div className="w-full flex flex-col gap-4 mb-4">
         <button 
           onClick={() => navigate('/dojo')}
-          className="w-full bg-[#00FFCC] py-5 rounded-3xl font-black text-xl text-[#0a0a0a] hover:brightness-110 transition-all shadow-[0_6px_0_#00AA88] active:translate-y-1 active:shadow-none animate-gentle-pulse"
+          className="w-full bg-[#00FFCC] py-4 sm:py-5 rounded-3xl font-black text-xl text-[#0a0a0a] hover:brightness-110 transition-all shadow-[0_6px_0_#00AA88] active:translate-y-1 active:shadow-none animate-gentle-pulse"
         >
           <div className="flex flex-col items-center">
              <span>DAILY DOJO</span>
@@ -506,7 +506,7 @@ const WelcomeScreen: React.FC<{ stats: UserStats, onOpenSettings: () => void }> 
 
         <button 
           onClick={handleContinueExercises}
-          className="w-full bg-blue-600/10 border border-blue-500/50 py-5 rounded-3xl font-black text-xl text-blue-500 hover:bg-blue-600/20 transition-all"
+          className="w-full bg-blue-600/10 border border-blue-500/50 py-4 sm:py-5 rounded-3xl font-black text-xl text-blue-500 hover:bg-blue-600/20 transition-all"
         >
           CONTINUE EXERCISES
         </button>
@@ -520,24 +520,24 @@ const PracticeSelector: React.FC = () => {
   const levels = [DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER];
   
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-6 pt-20">
-      <div className="flex items-center mb-10">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 pt-16 sm:p-6 sm:pt-20">
+      <div className="flex items-center mb-6 sm:mb-10">
         <button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button>
         <h2 className="text-2xl font-black text-[var(--text-main)] italic tracking-tight">Practice Mode</h2>
       </div>
-      <p className="text-[var(--text-muted)] mb-8 text-sm">Select a difficulty. Exercises generate endlessly. Focus on your accuracy.</p>
-      <div className="grid grid-cols-1 gap-6">
+      <p className="text-[var(--text-muted)] mb-6 sm:mb-8 text-sm">Select a difficulty. Exercises generate endlessly. Focus on your accuracy.</p>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {levels.map((lvl, idx) => (
           <button
             key={lvl}
             onClick={() => navigate(`/practice/${lvl}`)}
-            className="group relative flex flex-col p-8 rounded-[2.5rem] bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-blue-400 transition-all active:scale-95 shadow-sm"
+            className="group relative flex flex-col p-6 sm:p-8 rounded-[2.5rem] bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-blue-400 transition-all active:scale-95 shadow-sm"
           >
             <div className="text-[var(--text-muted)] font-black text-[10px] tracking-[0.3em] uppercase mb-2">Mode {idx + 1}</div>
             <div className="text-3xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">{lvl}</div>
             <div className="text-[var(--text-muted)] text-sm mt-1">Infinite Drills</div>
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
-               <OwlMascot className="w-16 h-16" />
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
+               <OwlMascot className="w-12 h-12 sm:w-16 sm:h-16" />
             </div>
           </button>
         ))}
@@ -561,13 +561,13 @@ const ExamSelector: React.FC<{ stats: UserStats }> = ({ stats }) => {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-6 pt-20">
-      <div className="flex items-center mb-10">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 pt-16 sm:p-6 sm:pt-20">
+      <div className="flex items-center mb-6 sm:mb-10">
         <button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button>
         <h2 className="text-2xl font-black text-[var(--text-main)] italic tracking-tight">Exam Mode</h2>
       </div>
-      <p className="text-[var(--text-muted)] mb-8 text-sm">Strict testing. No immediate feedback. Pass to prove mastery.</p>
-      <div className="grid grid-cols-1 gap-6">
+      <p className="text-[var(--text-muted)] mb-6 sm:mb-8 text-sm">Strict testing. No immediate feedback. Pass to prove mastery.</p>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {levels.map((lvl, idx) => {
             const id = examIds[lvl];
             const isUnlocked = stats.unlockedChallenges.includes(id);
@@ -575,12 +575,12 @@ const ExamSelector: React.FC<{ stats: UserStats }> = ({ stats }) => {
               <button
                 key={lvl}
                 onClick={() => id && navigate(`/play/${id}`)}
-                className={`group relative flex flex-col p-8 rounded-[2.5rem] border transition-all active:scale-95 shadow-sm bg-[var(--bg-card)] border-[var(--border-color)] hover:border-purple-500 cursor-pointer`}
+                className={`group relative flex flex-col p-6 sm:p-8 rounded-[2.5rem] border transition-all active:scale-95 shadow-sm bg-[var(--bg-card)] border-[var(--border-color)] hover:border-purple-500 cursor-pointer`}
               >
                 <div className="text-[var(--text-muted)] font-black text-[10px] tracking-[0.3em] uppercase mb-2">Exam {idx + 1}</div>
                 <div className="text-3xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">{lvl} EXAM</div>
                 <div className="text-[var(--text-muted)] text-sm mt-1">{isUnlocked ? 'Ready to Start' : 'Attempt Early (Test Out)'}</div>
-                <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
                    <span className="text-4xl">🎓</span>
                 </div>
               </button>
@@ -595,23 +595,23 @@ const LevelSelector: React.FC = () => {
   const navigate = useNavigate();
   const levels = [DifficultyLevel.BEGINNER, DifficultyLevel.INTERMEDIATE, DifficultyLevel.MASTER];
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-main)] p-6 pt-20">
-      <div className="flex items-center mb-10">
+    <div className="flex flex-col h-full bg-[var(--bg-main)] p-4 pt-16 sm:p-6 sm:pt-20">
+      <div className="flex items-center mb-6 sm:mb-10">
         <button onClick={() => navigate('/')} className="text-[var(--text-muted)] mr-4 text-2xl">←</button>
         <h2 className="text-2xl font-black text-[var(--text-main)] italic tracking-tight">Select Level</h2>
       </div>
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {levels.map((lvl, idx) => (
           <button
             key={lvl}
             onClick={() => navigate(`/level/${lvl}`)}
-            className="group relative flex flex-col p-8 rounded-[2.5rem] bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--text-muted)] transition-all active:scale-95 shadow-sm"
+            className="group relative flex flex-col p-6 sm:p-8 rounded-[2.5rem] bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--text-muted)] transition-all active:scale-95 shadow-sm"
           >
             <div className="text-[var(--text-muted)] font-black text-[10px] tracking-[0.3em] uppercase mb-2">Tier {idx + 1}</div>
             <div className="text-3xl font-black text-[var(--text-main)] italic uppercase tracking-tighter">{lvl}</div>
             <div className="text-[var(--text-muted)] text-sm mt-1">50 Professional Challenges</div>
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
-               <OwlMascot className="w-20 h-20" />
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
+               <OwlMascot className="w-16 h-16 sm:w-20 sm:h-20" />
             </div>
           </button>
         ))}
@@ -627,7 +627,7 @@ const ChallengeList: React.FC<{ stats: UserStats }> = ({ stats }) => {
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] overflow-hidden pt-12">
-      <div className="p-6 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md sticky top-0 z-10">
+      <div className="p-4 sm:p-6 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => navigate('/levels')} className="text-[var(--text-muted)] text-2xl">←</button>
           <div className="text-center">
@@ -687,7 +687,7 @@ const ChallengeList: React.FC<{ stats: UserStats }> = ({ stats }) => {
 
 interface GameSessionProps {
   stats: UserStats;
-  onComplete: (xp: number, passed: boolean, maxXP: number, id?: number) => void;
+  onComplete: (result: { xp: number, passed: boolean, maxXP: number, accuracy: number, challengeId?: number, mode: string, difficulty?: string }) => void;
   onUpdateHeatmap: (interval: number, correct: boolean) => void;
 }
 
@@ -930,8 +930,17 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
   const handleSummaryContinue = () => {
     const maxPotentialXP = gameState.questions.reduce((acc, q) => acc + (10 * q.targetMelody.length), 0);
     const passed = gameState.xpGained >= (maxPotentialXP * 0.8);
-    
-    onComplete(gameState.xpGained, passed, maxPotentialXP, challenge?.id);
+    const accuracy = Math.max(0, 100 - (mistakes * 10)); // Simple calculation
+
+    onComplete({
+        xp: gameState.xpGained,
+        passed,
+        maxXP: maxPotentialXP,
+        accuracy,
+        challengeId: challenge?.id,
+        mode: isExam ? 'EXAM' : isDailyDojo ? 'DOJO' : isPracticeMode ? 'PRACTICE' : 'CHALLENGE',
+        difficulty: difficulty
+    });
   };
 
   const handleRetry = () => {
@@ -955,7 +964,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] overflow-hidden">
-      <div className="px-6 pt-6 pb-2 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md">
+      <div className="flex-none px-4 pt-4 pb-2 sm:px-6 sm:pt-6 border-b border-[var(--border-color)] bg-[var(--bg-main)]/80 backdrop-blur-md">
         <div className="flex items-center gap-4 mb-4">
           <button onClick={() => navigate(isPracticeMode ? '/practice' : isExam ? '/exam' : isDailyDojo ? '/' : '/levels')} className="text-[var(--text-muted)]">✕</button>
           {!isPracticeMode && <div className="flex-1 h-2.5 bg-[var(--bg-card)] rounded-full overflow-hidden"><div className="h-full bg-[#00FFCC] transition-all duration-700" style={{ width: `${progressPercent}%` }} /></div>}
@@ -977,18 +986,18 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
         <div className="absolute inset-0 opacity-20 pointer-events-none">
            {!isExam && (
                <>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00FFCC] rounded-full blur-[100px]" style={{ visibility: feedback.type === 'correct' ? 'visible' : 'hidden' }}></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500 rounded-full blur-[100px]" style={{ visibility: feedback.type === 'wrong' ? 'visible' : 'hidden' }}></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-64 sm:h-64 bg-[#00FFCC] rounded-full blur-[100px]" style={{ visibility: feedback.type === 'correct' ? 'visible' : 'hidden' }}></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-64 sm:h-64 bg-red-500 rounded-full blur-[100px]" style={{ visibility: feedback.type === 'wrong' ? 'visible' : 'hidden' }}></div>
                </>
            )}
         </div>
         
         {/* Dynamic Boxes Visualization */}
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-8">
             {currentQ?.targetMelody.map((_, i) => {
                 const filled = userInput.length > i;
                 let solfegeText = '';
@@ -1001,7 +1010,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                 return (
                     <div 
                         key={i} 
-                        className={`w-12 h-12 rounded-xl border-2 transition-all duration-300 flex items-center justify-center font-bold text-sm ${
+                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl border-2 transition-all duration-300 flex items-center justify-center font-bold text-sm ${
                             filled 
                             ? (isExam 
                                 ? 'bg-[var(--bg-card)] border-[var(--text-muted)] text-[var(--text-main)] shadow-sm scale-100'
@@ -1015,26 +1024,26 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
             })}
         </div>
         
-        <OwlMascot state={feedback.type === 'correct' ? 'success' : feedback.type === 'wrong' ? 'fail' : !isAnswering ? 'active' : 'idle'} className="w-32 h-32 mb-6" />
+        <OwlMascot state={feedback.type === 'correct' ? 'success' : feedback.type === 'wrong' ? 'fail' : !isAnswering ? 'active' : 'idle'} className="w-24 h-24 sm:w-32 sm:h-32 mb-6" />
         
         <div className="h-16 flex flex-col items-center justify-center text-center w-full max-w-xs">
            {!isAnswering && <div className="text-blue-400 font-black tracking-widest text-sm animate-pulse">LISTEN...</div>}
            {isAnswering && (
-              <div className="flex gap-3 w-full animate-slide-up">
+              <div className="flex gap-2 sm:gap-3 w-full animate-slide-up">
                  {!canAdvance && (
                      <>
                         {!isExam ? (
                             <button 
                                 onClick={handleBackspace} 
                                 disabled={userInput.length === 0}
-                                className="flex-1 py-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-card-hover)] disabled:opacity-30 transition-all"
+                                className="flex-1 py-2 sm:py-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] font-bold text-xs sm:text-sm hover:bg-[var(--bg-card-hover)] disabled:opacity-30 transition-all"
                             >
                                 ⌫ 
                             </button>
                         ) : (
                             <button 
                                 onClick={handleSkip} 
-                                className="flex-1 py-3 rounded-xl bg-[var(--bg-card)] border border-red-500/50 text-red-500 font-bold text-sm hover:bg-red-500/10 transition-all"
+                                className="flex-1 py-2 sm:py-3 rounded-xl bg-[var(--bg-card)] border border-red-500/50 text-red-500 font-bold text-xs sm:text-sm hover:bg-red-500/10 transition-all"
                             >
                                 SKIP
                             </button>
@@ -1044,7 +1053,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                              <button 
                                 onClick={handleCheckSequence}
                                 disabled={userInput.length !== currentQ?.targetMelody.length}
-                                className="flex-[2] py-3 rounded-xl bg-purple-500 text-white font-black text-sm hover:bg-purple-400 transition-all shadow-[0_4px_0_#9333ea] active:translate-y-1 active:shadow-none"
+                                className="flex-[2] py-2 sm:py-3 rounded-xl bg-purple-500 text-white font-black text-xs sm:text-sm hover:bg-purple-400 transition-all shadow-[0_4px_0_#9333ea] active:translate-y-1 active:shadow-none"
                             >
                                 SUBMIT
                             </button>
@@ -1052,7 +1061,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                             <button 
                                 onClick={handleCheckSequence}
                                 disabled={userInput.length !== currentQ?.targetMelody.length}
-                                className="flex-[2] py-3 rounded-xl bg-[#00FFCC] text-black font-black text-sm hover:brightness-110 disabled:opacity-30 disabled:saturate-0 transition-all shadow-[0_4px_0_#00AA88] active:translate-y-1 active:shadow-none"
+                                className="flex-[2] py-2 sm:py-3 rounded-xl bg-[#00FFCC] text-black font-black text-xs sm:text-sm hover:brightness-110 disabled:opacity-30 disabled:saturate-0 transition-all shadow-[0_4px_0_#00AA88] active:translate-y-1 active:shadow-none"
                             >
                                 CHECK
                             </button>
@@ -1062,7 +1071,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                  {canAdvance && (
                      <button 
                         onClick={handleNext}
-                        className="flex-[2] py-3 rounded-xl bg-blue-500 text-white font-black text-sm hover:bg-blue-400 transition-all shadow-[0_4px_0_#2563EB] active:translate-y-1 active:shadow-none animate-bounce"
+                        className="flex-[2] py-2 sm:py-3 rounded-xl bg-blue-500 text-white font-black text-xs sm:text-sm hover:bg-blue-400 transition-all shadow-[0_4px_0_#2563EB] active:translate-y-1 active:shadow-none animate-bounce"
                      >
                         NEXT →
                      </button>
@@ -1083,13 +1092,13 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
       />
 
       {showOverlay && !isExam && (
-        <div className="absolute inset-x-0 bottom-0 z-50 bg-[var(--bg-main)] rounded-t-[3rem] border-t-4 border-red-500 p-8 animate-slide-up shadow-2xl">
-          <h3 className="text-red-500 font-black text-3xl italic tracking-tighter mb-4">MISSED IT</h3>
+        <div className="absolute inset-x-0 bottom-0 z-50 bg-[var(--bg-main)] rounded-t-[2rem] sm:rounded-t-[3rem] border-t-4 border-red-500 p-6 sm:p-8 animate-slide-up shadow-2xl">
+          <h3 className="text-red-500 font-black text-2xl sm:text-3xl italic tracking-tighter mb-4">MISSED IT</h3>
           
-          <div className="bg-[var(--bg-card)] rounded-xl p-4 mb-6 space-y-3">
+          <div className="bg-[var(--bg-card)] rounded-xl p-4 mb-4 sm:mb-6 space-y-3">
              <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-2">
                  <span className="text-[10px] uppercase font-black text-[var(--text-muted)] tracking-widest">Key Center</span>
-                 <span className="text-[var(--text-main)] font-bold">
+                 <span className="text-[var(--text-main)] font-bold text-sm sm:text-base">
                     {getNoteName(currentQ.keyCenter)} <span className="text-blue-400 ml-1">({getSolfege(currentQ.keyCenter, currentQ.keyCenter)})</span>
                  </span>
              </div>
@@ -1098,8 +1107,8 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                  <div className="text-right">
                     {isAnswerRevealed ? (
                         feedback.targetSequence?.map((n, i) => (
-                            <span key={i} className="text-[#00FFCC] font-bold ml-2">
-                                {getNoteName(n)} <span className="opacity-70 text-xs">({getSolfege(n, currentQ.keyCenter)})</span>
+                            <span key={i} className="text-[#00FFCC] font-bold ml-2 text-sm sm:text-base">
+                                {getNoteName(n)} <span className="opacity-70 text-[10px] sm:text-xs">({getSolfege(n, currentQ.keyCenter)})</span>
                             </span>
                         ))
                     ) : (
@@ -1111,8 +1120,8 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
                  <span className="text-[10px] uppercase font-black text-[var(--text-muted)] tracking-widest">Played</span>
                  <div className="text-right">
                     {feedback.userSequence?.map((n, i) => (
-                        <span key={i} className="text-red-500 font-bold ml-2">
-                            {getNoteName(n)} <span className="opacity-70 text-xs">({getSolfege(n, currentQ.keyCenter)})</span>
+                        <span key={i} className="text-red-500 font-bold ml-2 text-sm sm:text-base">
+                            {getNoteName(n)} <span className="opacity-70 text-[10px] sm:text-xs">({getSolfege(n, currentQ.keyCenter)})</span>
                         </span>
                     ))}
                  </div>
@@ -1121,8 +1130,8 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
           
           <div className="flex flex-col gap-3">
              <div className="flex gap-3">
-                <button onClick={handleRetry} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] py-4 rounded-2xl font-black text-[var(--text-main)] text-lg hover:bg-[var(--bg-card-hover)]">RETRY</button>
-                <button onClick={() => { setShowOverlay(false); handleNext(); }} className="flex-1 bg-red-600 py-4 rounded-2xl font-black text-white text-lg hover:bg-red-500">NEXT</button>
+                <button onClick={handleRetry} className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] py-3 sm:py-4 rounded-2xl font-black text-[var(--text-main)] text-base sm:text-lg hover:bg-[var(--bg-card-hover)]">RETRY</button>
+                <button onClick={() => { setShowOverlay(false); handleNext(); }} className="flex-1 bg-red-600 py-3 sm:py-4 rounded-2xl font-black text-white text-base sm:text-lg hover:bg-red-500">NEXT</button>
              </div>
              {!isAnswerRevealed && (
                  <button onClick={() => setIsAnswerRevealed(true)} className="w-full text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] py-2 hover:text-[var(--text-main)]">
@@ -1139,7 +1148,7 @@ const GameSession: React.FC<GameSessionProps> = ({ stats, onComplete, onUpdateHe
 const AppContent: React.FC<{ 
   stats: UserStats; 
   onOpenSettings: () => void; 
-  handleComplete: (xp: number, passed: boolean, maxXP: number, id?: number) => void; 
+  handleComplete: (result: { xp: number, passed: boolean, maxXP: number, accuracy: number, challengeId?: number, mode: string, difficulty?: string }) => void; 
   handleUpdateHeatmap: (interval: number, correct: boolean) => void;
   onToggleTheme: () => void;
 }> = ({ stats, onOpenSettings, handleComplete, handleUpdateHeatmap, onToggleTheme }) => {
@@ -1187,7 +1196,7 @@ const App: React.FC = () => {
       setUser(currentUser);
       if (currentUser) {
         // Load cloud stats and merge with current local stats
-        const syncedStats = await StorageService.syncWithCloud(currentUser.uid, stats);
+        const syncedStats = await StorageService.syncWithCloud(currentUser, stats);
         setStats(syncedStats);
       }
     });
@@ -1201,7 +1210,7 @@ const App: React.FC = () => {
     // Save to cloud if logged in
     if (user) {
         // Debounce could be added here for performance, but for now safe to save
-        StorageService.saveToCloud(user.uid, stats);
+        StorageService.saveToCloud(user, stats);
     }
   }, [stats, user]);
   
@@ -1210,7 +1219,9 @@ const App: React.FC = () => {
     document.body.style.backgroundColor = stats.theme === 'dark' ? '#0a0a0a' : '#f0f2f5';
   }, [stats.theme]);
 
-  const handleComplete = (xp: number, passed: boolean, maxXP: number, id?: number) => {
+  const handleComplete = (result: { xp: number, passed: boolean, maxXP: number, accuracy: number, challengeId?: number, mode: string, difficulty?: string }) => {
+    const { xp, passed, maxXP, challengeId, mode, difficulty, accuracy } = result;
+
     setStats(prev => {
       let nextStats = { ...prev };
       
@@ -1224,15 +1235,15 @@ const App: React.FC = () => {
       }
 
       // Unlock next challenge if not Dojo or Practice AND if passed
-      if (id && passed) {
-        const currentHighScore = nextStats.highScores[id] || 0;
+      if (challengeId && passed) {
+        const currentHighScore = nextStats.highScores[challengeId] || 0;
         if (xp > currentHighScore) {
-             nextStats.highScores = { ...nextStats.highScores, [id]: xp };
+             nextStats.highScores = { ...nextStats.highScores, [challengeId]: xp };
         }
 
         // Logic adjusted for new sequential ID system (exams included)
         // Check if next ID exists in curriculum
-        const nextId = id + 1;
+        const nextId = challengeId + 1;
         const exists = CURRICULUM.some(c => c.id === nextId);
         
         if (exists && !nextStats.unlockedChallenges.includes(nextId)) {
@@ -1246,11 +1257,24 @@ const App: React.FC = () => {
 
       return nextStats;
     });
+
+    // LOGGING TO DATABASE
+    if (user) {
+        StorageService.logSession(user, {
+            challengeId,
+            mode: mode as any,
+            difficulty,
+            xpEarned: xp,
+            maxXP,
+            accuracy,
+            passed
+        });
+    }
     
     // Navigate back logic
-    if (id) {
+    if (challengeId) {
        // If it was an exam, maybe go to Exam Selector or Level Selector?
-       const challenge = CURRICULUM.find(c => c.id === id);
+       const challenge = CURRICULUM.find(c => c.id === challengeId);
        if (challenge?.isExam) {
            window.location.hash = '/exam';
        } else {

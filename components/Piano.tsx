@@ -50,7 +50,7 @@ const Piano: React.FC<PianoProps> = ({ onNoteClick, highlightedNote, correctNote
   }, []);
 
   return (
-    <div className="relative w-full h-64 overflow-hidden border-t border-[var(--border-color)] bg-[var(--bg-main)]">
+    <div className="relative w-full h-48 sm:h-64 flex-none overflow-hidden border-t border-[var(--border-color)] bg-[var(--bg-main)]">
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
